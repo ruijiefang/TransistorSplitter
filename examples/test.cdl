@@ -1,0 +1,30 @@
+.SUBCKT DECAPx10_ASAP7_75t_SL VDD VSS
+MM2 net011 net012 VSS VSS nmos_slvt w=810.0n l=20n nfin=30
+MM1 net012 net011 VDD VDD pmos_slvt w=810.0n l=20n nfin=30
+.ENDS
+
+
+.SUBCKT DECAPx1_ASAP7_75t_SL VDD VSS
+MM2 net5 net6 VSS VSS nmos_slvt w=81.0n l=20n nfin=3
+MM1 net6 net5 VDD VDD pmos_slvt w=81.0n l=20n nfin=3
+.ENDS
+
+
+.SUBCKT DECAPx2_ASAP7_75t_SL VDD VSS
+MM2 net011 net012 VSS VSS nmos_slvt w=162.00n l=20n nfin=6
+MM1 net012 net011 VDD VDD pmos_slvt w=162.00n l=20n nfin=6
+.ENDS
+
+
+.SUBCKT DECAPx2b_ASAP7_75t_SL VDD VSS
+MM2 net011 net012 VSS VSS nmos_slvt w=162.00n l=20n nfin=6
+MM0 net011 net011 VSS VSS nmos_slvt w=162.00n l=20n nfin=6
+MM1 net012 net011 VDD VDD pmos_slvt w=162.00n l=20n nfin=6
+MM3 net012 net012 VDD VDD pmos_slvt w=162.00n l=20n nfin=6
+.ENDS
+
+
+.SUBCKT DECAPx4_ASAP7_75t_SL VDD VSS
+MM2 net011 net012 VSS VSS nmos_slvt w=324.00n l=20n nfin=12
+MM1 net012 net011 VDD VDD pmos_slvt w=324.00n l=20n nfin=12
+.ENDS

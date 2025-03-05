@@ -1,0 +1,1 @@
+ - https://github.com/The-OpenROAD-Project/asap7sc7p5t_28/blob/f970bd3c3292b79ae4d022a3ec80533534614066/CDL/LVS/asap7sc7p5t_28_SL.cdl
