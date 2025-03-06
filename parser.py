@@ -61,7 +61,15 @@ class TransistorBlock(object):
     self.transistors.append(tr)
 
   def pair(self):
-    pass
+    pmos = set(filter(lambda x: x.is_pmos), self.transistors)
+    nmos = set(filter(lambda x: not(x.is_pmos)), self.transistors)
+    if len(pmos) != len(nmos):
+      raise ValueError("pair() error: there are " + str(len(pmos)) + " PMOSes but " + str(len(nmos)) + " NMOSes")
+    drains = {}
+    gates  = {}
+    for trans in self.transistors:
+        drains[trans.drain] = trans 
+        gates[trans.gate] = trans
 
   def __str__(self):
     lines = []
@@ -70,6 +78,13 @@ class TransistorBlock(object):
       lines.append(str(tr))
     lines.append(".ENDS")
     return "\n".join(lines)
+
+# TODO 
+class RuleChecker(object):
+  def __init__(self, transblock):
+    self.transblock = transblock 
+
+
 
 def msplit(delimiters, string):
     regex_pattern = '|'.join(map(re.escape, delimiters))
