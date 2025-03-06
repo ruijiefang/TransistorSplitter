@@ -12,6 +12,11 @@ class Transistor(object):
       MM13    net067    net063 VSS      VSS     nmos_slvt w=162.00n l=20n   nfin=6
       ^       ^         ^      ^        ^       ^         ^         ^       ^
       name    drain     gate   source   bulk    NMOS      width     length  numfins
+  
+    drain: output of the transistor
+    gate: control-signal connection
+    source: usually VDD, connected to a supply voltage for pMOS
+    bulk: also tied to VDD
   """
 
   def __init__(self, name, drain, gate, src, blk, is_pmos, width, length, numfins):
@@ -49,35 +54,80 @@ class TransistorBlock(object):
       vss_name: name of VSS / ground
   """
 
-  def __init__(self, name, vdd_name, vss_name, input_signal, output_signal, transistors=[]):
+  def __init__(self, name, externals, transistors=[]):
     self.transistors = transistors
     self.name = name 
-    self.vdd_name = vdd_name
-    self.vss_name = vss_name
-    self.input_signal = input_signal
-    self.output_signal = output_signal
+    self.externals = externals 
 
   def add_transistor(self, tr):
     self.transistors.append(tr)
 
-  def pair(self):
-    pmos = set(filter(lambda x: x.is_pmos), self.transistors)
-    nmos = set(filter(lambda x: not(x.is_pmos)), self.transistors)
-    if len(pmos) != len(nmos):
-      raise ValueError("pair() error: there are " + str(len(pmos)) + " PMOSes but " + str(len(nmos)) + " NMOSes")
-    drains = {}
-    gates  = {}
-    for trans in self.transistors:
-        drains[trans.drain] = trans 
-        gates[trans.gate] = trans
+  def add_externals(self, ex):
+    self.externals.append(ex)
 
   def __str__(self):
     lines = []
-    lines.append(".SUBCKT " + self.name + " " + self.input_signal + " " + self.vdd_name + " " + self.vss_name + " " + self.output_signal)
+    externals = " ".join(self.externals)
+    lines.append(".SUBCKT " + self.name + " " + externals)
     for tr in self.transistors:
       lines.append(str(tr))
     lines.append(".ENDS")
     return "\n".join(lines)
+
+class PairingPlan(object):
+  """
+    PairingPlan represents a possible pairing of a (pmos, nmos) list
+  """
+  def __init__(self, pmos, nmos):
+    self.pmos = pmos 
+    self.nmos = nmos
+    self.pairs = {}
+    if len(self.pmos) != len(self.nmos):
+      raise ValueError("PairingPlan(): length of PMOS (" + str(len(pmos)) + ") != length of NMOS (" + str(len(nmos)) + ")")
+
+  def pair(self, p, n):
+    if self.p.gate != self.n.gate:
+      raise ValueError("PairingPlan(): illegal pairing of " + p.name + " with " + n.name)
+    self.pairs[p.name] = n.name
+    self.pairs[n.name] = p.name
+
+  def can_pair(self, p, n):
+    return self.p.gate == self.n.gate
+
+  # check if self.pairs[-] is idempotent 
+  def is_legal(self):
+    for p in self.pairs:
+      q = self.pairs[p]
+      if self.pairs[q] != p:
+        return False
+    return True
+
+  # check if a pairing covers all pairs
+  def is_complete(self):
+    return (self.is_legal() and (len(self.pairs) == 2 * len(self.pmos)))
+
+class PairedTransistorBlock(TransistorBlock):
+
+  """
+    a PairedTransistorBlock extends a TransistorBlock, 
+    it represents the paired result of a transistor block
+  """
+  def __init__(self, transblock, pairingplan):
+    super().__init__(transblock.name, transblock.externals, transistors=transblock.transistors)
+    self.pairingplan = pairingplan
+
+  def pmos_nmos_pairs(self):
+    pmos = list(filter(lambda tr: tr.is_pmos, self.transistors))
+    pairs = []
+    for p_tr in pmos:
+      n_tr = self.pairingplan.pairs[p_tr.name]
+      pairs.append((p_tr, n_tr))
+    return pairs
+
+
+# TODO
+class TransistorPairer(object):
+  pass
 
 # TODO 
 class RuleChecker(object):
@@ -119,7 +169,9 @@ def parse_transblock(i, lines):
   print(" * >>> ", vals)
   # ['.SUBCKT', 'DECAPx10_ASAP7_75t_SL', 'VDD', 'VSS']
   #               ^1                      ^2     ^3
-  transblock = TransistorBlock(vals[1], vals[2], vals[3], 'A', 'Y')
+  externals = vals[2:]
+  transblock = TransistorBlock(vals[1], externals)
+    
   i += 1
   while True:
     line = lines[i].rstrip().lstrip()
