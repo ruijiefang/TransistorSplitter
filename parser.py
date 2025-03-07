@@ -1,9 +1,11 @@
 """
-  Parser code for Circuit Design Language (CDL) format
+  Parser and pairing code for netlist given in Circuit Design Language (CDL) format
 """
 import re
 import os
 from sys import argv 
+from collections import defaultdict
+import z3
 
 class Transistor(object):
   """
@@ -54,12 +56,15 @@ class TransistorBlock(object):
       vss_name: name of VSS / ground
   """
 
-  def __init__(self, name, externals, transistors=[]):
+  def __init__(self, name, externals, transistors=None):
+    print('--------- transistors: ', transistors)
     self.transistors = transistors
     self.name = name 
     self.externals = externals 
 
   def add_transistor(self, tr):
+    if self.transistors == None:
+      self.transistors=[]
     self.transistors.append(tr)
 
   def add_externals(self, ex):
@@ -78,10 +83,10 @@ class PairingPlan(object):
   """
     PairingPlan represents a possible pairing of a (pmos, nmos) list
   """
-  def __init__(self, pmos, nmos):
+  def __init__(self, pmos, nmos, pairs={}):
     self.pmos = pmos 
     self.nmos = nmos
-    self.pairs = {}
+    self.pairs = pairs
     if len(self.pmos) != len(self.nmos):
       raise ValueError("PairingPlan(): length of PMOS (" + str(len(pmos)) + ") != length of NMOS (" + str(len(nmos)) + ")")
 
@@ -99,6 +104,8 @@ class PairingPlan(object):
     for p in self.pairs:
       q = self.pairs[p]
       if self.pairs[q] != p:
+        return False
+      if self.pairs[q].is_pmos == self.pairs[p].is_pmos:
         return False
     return True
 
@@ -120,14 +127,62 @@ class PairedTransistorBlock(TransistorBlock):
     pmos = list(filter(lambda tr: tr.is_pmos, self.transistors))
     pairs = []
     for p_tr in pmos:
-      n_tr = self.pairingplan.pairs[p_tr.name]
+      n_tr = self.pairingplan.pairs[p_tr]
       pairs.append((p_tr, n_tr))
     return pairs
 
 
-# TODO
 class TransistorPairer(object):
-  pass
+  """
+    Greedy placer for transistors
+  """
+  def __init__(self, transblock):
+    self.transblock = transblock
+    self.pmos_trs = list(filter(lambda x: x.is_pmos, self.transblock.transistors))
+    self.nmos_trs = list(filter(lambda x: not(x.is_pmos), self.transblock.transistors))
+    self.pmos_gate = defaultdict(list)
+    self.nmos_gate = defaultdict(list)
+    for tr in self.pmos_trs:
+      self.pmos_gate[tr.gate].append(tr)
+    for tr in self.nmos_trs:
+      self.nmos_gate[tr.gate].append(tr)
+    # Check #1: total num of PMOS transistors = total num of NMOS transistors
+    if len(self.pmos_trs) != len(self.nmos_trs):
+      raise ValueError("place(): unequal number of PMOS and NMOS transistors: num PMOS=" + str(len(self.pmos_trs)) + "; num NMOS=" + str(len(self.nmos_trs)))
+    # Check #2: total num of PMOS gates = total num of NMOS gates
+    if len(self.pmos_gate) != len(self.nmos_gate):
+      raise ValueError("place(): unequal number of PMOS and NMOS gate names: num PMOS gates = " + str(len(self.pmos_gate)) + "; num NMOS gates = " + str(len(self.nmos_gate)))
+    # Check #3: Number of pMOS = number of nMOS for each gate name
+    for gate_name in self.pmos_gate:
+      if len(self.pmos_gate[gate_name]) != len(self.nmos_gate[gate_name]):
+        raise ValueError("place(): unequal number of PMOS and NMOS transistors for gate name " + gate_name + ": num PMOS=" + str(len(self.pmos_gate[gate_name])) + "; num NMOS=" + str(len(self.nmos_gate[gate_name])))
+
+
+  def pairing(self):
+    pairs = {} 
+    pmos_gate = self.pmos_gate
+    nmos_gate = self.nmos_gate
+    for gate_name in pmos_gate:
+      # pair up in 1-1 fashion
+      for i in range(len(pmos_gate[gate_name])):
+        pairs[pmos_gate[gate_name][i]] = nmos_gate[gate_name][i]
+        pairs[nmos_gate[gate_name][i]] = pmos_gate[gate_name][i]
+    pairing = PairingPlan(self.pmos_trs, self.nmos_trs, pairs=pairs)
+    result = PairedTransistorBlock(self.transblock, pairing) # list of (pmos, nmos) pairs
+    assert pairing.pairs==pairs
+    print('len(pairs): ', len(pairs))
+    print('len(pmos_trs): ', len(self.pmos_trs))
+    print('len(nmos_trs):', len(self.nmos_trs))
+    print('len(result.pairingplan.pairs): ', len(result.pairingplan.pairs))
+    assert len(result.pairingplan.pairs) == len(self.pmos_trs) * 2
+    assert result.pairingplan.is_complete()
+    return result
+
+class AllSatTransistorPairer(TransistorPairer):
+  """
+    ALLSAT-based pairer for transistors
+  """
+  pass # TODO
 
 # TODO 
 class RuleChecker(object):
@@ -135,10 +190,20 @@ class RuleChecker(object):
     self.transblock = transblock 
 
 
+"""
+  The following functions parse an input netlist given in CDL format
+"""
 
 def msplit(delimiters, string):
     regex_pattern = '|'.join(map(re.escape, delimiters))
     return re.split(regex_pattern, string)
+
+def parse_term(vals, idx, s):
+  try: 
+    t = float(vals[idx].split(s)[1].split("n")[0])
+  except:
+    t = float(vals[idx].split(s)[1].split("u")[0])
+  return t
 
 def parse_transistor(i, lines):
   line = lines[i].lstrip().rstrip()
@@ -152,12 +217,12 @@ def parse_transistor(i, lines):
   tr_gate = vals[2]
   tr_src = vals[3]
   tr_blk = vals[4]
-  if vals[5] in ["nmos_slvt", "pmos_slvt"]:
-    tr_is_pmos = vals[5] == "pmos_slvt"
+  if ("pmos" in vals[5]) or ("nmos" in vals[5]):
+    tr_is_pmos = ("pmos" in vals[5])
   else:
     raise ValueError("parse_transistor error: illegal input " + lines[i])
-  tr_width = float(vals[6].split("w=")[1].split("n")[0])
-  tr_length = float(vals[7].split("l=")[1].split("n")[0])
+  tr_width = parse_term(vals, 6, "w=") # float(vals[6].split("w=")[1].split("n")[0])
+  tr_length = parse_term(vals, 7, "l=") # float(vals[7].split("l=")[1].split("n")[0])
   tr_nfin = int(vals[8].split("nfin=")[1])
   return Transistor(tr_name, tr_drain, tr_gate, tr_src, tr_blk, tr_is_pmos, tr_width, tr_length, tr_nfin)
 
@@ -170,12 +235,14 @@ def parse_transblock(i, lines):
   # ['.SUBCKT', 'DECAPx10_ASAP7_75t_SL', 'VDD', 'VSS']
   #               ^1                      ^2     ^3
   externals = vals[2:]
+  print('before')
   transblock = TransistorBlock(vals[1], externals)
-    
+  print("transblock: ", transblock.transistors) 
   i += 1
   while True:
     line = lines[i].rstrip().lstrip()
     if line.startswith('.ENDS'):
+      print("finish parsing block ", transblock.name, "; ", len(transblock.transistors), ' transistors')
       return (transblock, i)
     else:
       tr = parse_transistor(i, lines)
@@ -217,6 +284,16 @@ def tryparser():
   blocks = parse_cdl(file)
   print(" * CDL parser: parsing done. ")
   print_cdl(blocks)
+  print("******************** trying pairing for each transistor block ***************")
+  for block in blocks:
+    print("*** pairing block ", block.name)
+    pairer = TransistorPairer(block)
+    result = pairer.pairing()
+    print('* >>> pairing success')
+    pairs = result.pmos_nmos_pairs()
+    for (pmos, nmos) in pairs:
+      print("* PAIR: ", pmos.name, " ; ", nmos.name)
+  print("********")
 
 if __name__ == "__main__":
   tryparser()
