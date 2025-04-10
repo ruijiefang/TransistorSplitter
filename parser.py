@@ -3,9 +3,11 @@
 """
 import re
 import os
+import z3
+
 from sys import argv 
 from collections import defaultdict
-import z3
+from overrides import overrides
 
 class Transistor(object):
   """
@@ -178,11 +180,6 @@ class TransistorPairer(object):
     assert result.pairingplan.is_complete()
     return result
 
-class AllSatTransistorPairer(TransistorPairer):
-  """
-    ALLSAT-based pairer for transistors
-  """
-  pass # TODO
 
 # TODO 
 class RuleChecker(object):
