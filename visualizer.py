@@ -10,14 +10,13 @@ import cairo
 #   poly_width: Width of polysilicon gate
 #   poly_extension: Size in nm of how much after the diffusion area the polysilicon gate will extend
 class Transistor(object):
-    def __init__(self, is_pmos, x, y, width, length, poly_width, poly_extension):
+    def __init__(self, is_pmos, x, y, base_width, width_multiplier, length):
         self.is_pmos = is_pmos
         self.x = x
         self.y = y
-        self.width = width
+        self.width = base_width * width_multiplier
+        self.base_width = base_width
         self.length = length
-        self.poly_width = poly_width
-        self.poly_extension = poly_extension
 
         self.pmos_color = (0, 102, 255, 1)
         self.nmos_color = (0, 204, 0, 1)
@@ -26,14 +25,11 @@ class Transistor(object):
     def draw(self, context: cairo.Context) -> None:
         if self.is_pmos:
             context.set_source_rgba(0, (102/255), 1, 1)
+            context.rectangle(self.x, self.y, self.length, self.width)
         else:
             context.set_source_rgba(0, (204/255), 0, 1)
+            context.rectangle(self.x, self.y+(self.base_width*3 - self.width), self.length, self.width)
 
-        context.rectangle(self.x, self.y, self.length, self.width)
-        context.fill()
-
-        context.set_source_rgba(1, 51/255, 0, 1)
-        context.rectangle(((self.length - self.poly_width) / 2) + self.x, self.y - self.poly_extension, self.poly_width, self.width + (self.poly_extension*2))
         context.fill()
 
 
@@ -66,8 +62,34 @@ class Plotter(object):
     #   row: Row value of transistor placement
     #   width: Diffusion area width (1, 2, or 3)
     def addTransistor(self, is_pmos, column, row, width):
-        transistor = Transistor(is_pmos=is_pmos, x=column*self.diffusion_length, y=(row*4*self.ACTIVE_S_1)+self.GATE_ACTIVE_EX_1, width=(width*self.ACTIVE_W_1), length=self.diffusion_length, poly_width=self.poly_width, poly_extension=self.GATE_ACTIVE_EX_1)
+        transistor = Transistor(is_pmos=is_pmos, x=column*self.diffusion_length, y=(row*4*self.ACTIVE_S_1)+self.GATE_ACTIVE_EX_1, base_width = self.ACTIVE_W_1, width_multiplier=width, length=self.diffusion_length)
         transistor.draw(self.context)
+
+    # Draws polysilicon gate on top of transistor pair
+    # Inputs:
+    #   column: Column value of transistor pair
+    #   row: Row value of transistor pair
+    #   context: Cairo context
+    def drawPoly(self, column, row, context: cairo.Context):
+        context.set_source_rgba(1, 51 / 255, 0, 1)
+        context.rectangle(((self.diffusion_length - self.poly_width) / 2) + column*self.diffusion_length, (row*8*self.ACTIVE_S_1),
+                          self.poly_width, (7*self.ACTIVE_S_1)+(self.GATE_ACTIVE_EX_1*2))
+        context.fill()
+
+    # Draws transistor pair into image with polysilicon gate
+    # Inputs:
+    #   column: Column value of transistor pair
+    #   row: Row value of transistor pair
+    #   pmos_width: Diffusion area width of PMOS transistor (0, 1, 2, or 3)
+    #   nmos_width: Diffusion area width of NMOS transistor (0, 1, 2, or 3)
+    def addTransistorPair(self, column, row, pmos_width, nmos_width):
+        if (pmos_width > 0):
+            self.addTransistor(True, column, row*2, pmos_width)
+
+        if (nmos_width > 0):
+            self.addTransistor(False, column, (row*2)+1, nmos_width)
+
+        self.drawPoly(column, row, self.context)
 
     # Saves die into an image
     # Inputs:
@@ -77,17 +99,30 @@ class Plotter(object):
 
 def tryvisualizer():
     plotter = Plotter(canvas_width=2000, canvas_height=2000)
-    plotter.addTransistor(is_pmos=True, column=0, row=0, width=1)
-    plotter.addTransistor(is_pmos=True, column=1, row=0, width=2)
-    plotter.addTransistor(is_pmos=True, column=2, row=0, width=1)
-    plotter.addTransistor(is_pmos=True, column=3, row=0, width=1)
-    plotter.addTransistor(is_pmos=True, column=4, row=0, width=3)
 
-    plotter.addTransistor(is_pmos=False, column=0, row=1, width=1)
-    plotter.addTransistor(is_pmos=False, column=1, row=1, width=2)
-    plotter.addTransistor(is_pmos=False, column=2, row=1, width=1)
-    plotter.addTransistor(is_pmos=False, column=3, row=1, width=1)
-    plotter.addTransistor(is_pmos=False, column=4, row=1, width=3)
+    plotter.addTransistorPair(column=0, row=0, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=1, row=0, pmos_width=2, nmos_width=2)
+    plotter.addTransistorPair(column=2, row=0, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=3, row=0, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=4, row=0, pmos_width=3, nmos_width=3)
+
+    plotter.addTransistorPair(column=6, row=0, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=7, row=0, pmos_width=2, nmos_width=2)
+    plotter.addTransistorPair(column=8, row=0, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=9, row=0, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=10, row=0, pmos_width=3, nmos_width=3)
+
+    plotter.addTransistorPair(column=0, row=1, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=1, row=1, pmos_width=2, nmos_width=2)
+    plotter.addTransistorPair(column=2, row=1, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=3, row=1, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=4, row=1, pmos_width=3, nmos_width=3)
+    plotter.addTransistorPair(column=5, row=1, pmos_width=2, nmos_width=3)
+    plotter.addTransistorPair(column=6, row=1, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=7, row=1, pmos_width=2, nmos_width=2)
+    plotter.addTransistorPair(column=8, row=1, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=9, row=1, pmos_width=1, nmos_width=1)
+    plotter.addTransistorPair(column=10, row=1, pmos_width=3, nmos_width=3)
     plotter.saveImage("layout.png")
 
 if __name__ == "__main__":
