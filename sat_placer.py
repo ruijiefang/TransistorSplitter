@@ -30,6 +30,18 @@ class ResultBlock(object):
     else:
       return "EMPTY"
 
+  def get_drain(self):
+    if self.transistor != None:
+      return self.transistor.drain
+    else:
+      return ""
+
+  def get_source(self):
+    if self.transistor != None:
+      return self.transistor.source
+    else:
+      return ""
+
   def is_empty(self): # check if this is an empty block
     return self.transistor == None
 
@@ -250,8 +262,70 @@ class Checker(object):
 
 
   def check_source_drain_match(self):
-    pass
+    success = True
+    # PMOS
+    for r in range(self.result.num_rows):
+      for s in range(self.result.num_sites - 1):
+        b = self.result.pmos_cell_at(r, s)
+        if b.is_empty():
+          break
 
+        next = self.result.pmos_cell_at(r, s+1)
+        if next.is_empty():
+          break
+
+        if b.get_flip_type() == "S-D":
+          if next.get_flip_type() == "S-D":
+            if b.get_drain() != next.get_source():
+              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_drain(), next.get_source(),")")
+              success = False
+          else:
+            if b.get_drain() != next.get_drain():
+              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_drain(), next.get_drain(),")")
+              success = False
+        else:
+          if next.get_flip_type() == "S-D":
+            if b.get_source() != next.get_source():
+              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_source(), next.get_source(),")")
+              success = False
+          else:
+            if b.get_source() != next.get_drain():
+              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_source(), next.get_drain(),")")
+              success = False
+
+    # NMOS
+    for r in range(self.result.num_rows):
+      for s in range(self.result.num_sites - 1):
+        b = self.result.nmos_cell_at(r, s)
+        if b.is_empty():
+          break
+
+        next = self.result.nmos_cell_at(r, s+1)
+        if next.is_empty():
+          break
+
+        if b.get_flip_type() == "S-D":
+          if next.get_flip_type() == "S-D":
+            if b.get_drain() != next.get_source():
+              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_drain(), next.get_source(),")")
+              success = False
+          else:
+            if b.get_drain() != next.get_drain():
+              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_drain(), next.get_drain(),")")
+              success = False
+        else:
+          if next.get_flip_type() == "S-D":
+            if b.get_source() != next.get_source():
+              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_source(), next.get_source(),")")
+              success = False
+          else:
+            if b.get_source() != next.get_drain():
+              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_source(), next.get_drain(),")")
+              success = False
+
+    if success:
+      print("Net match PASS")
+    return success
 
 class SATPlacement(object):
 
