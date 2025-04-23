@@ -53,7 +53,7 @@ class Result(object):
       num_rows: integer, representing number of rows
       num_sites: integer, representing number of sites
       pmos_grid: list of list of ResultBlock objects, representing the PMOS grid.
-      nmos: grid: similar to above but for NMOS
+      nmos_grid: similar to above but for NMOS
   """
 
   def __init__(self, num_rows, num_sites, pmos_grid, nmos_grid):
@@ -65,12 +65,13 @@ class Result(object):
   # get cell at (r, s) in pmos grid
   # returns a ResultBlock instance 
   def pmos_cell_at(self, r, s):
-    return self.pmos_grid[r][s]
+    #return self.pmos_grid[r][s]
+    return self.pmos_grid[r*self.num_sites + s]
 
   # get cell at (r, s) in nmos grid
   # returns a ResultBlock instance
   def nmos_cell_at(self, r, s):
-    return self.nmos_grid[r][s]
+    return self.nmos_grid[r*self.num_sites + s]
 
 
 class Checker(object):
@@ -90,15 +91,116 @@ class Checker(object):
   +---+   +---+
   """
   def check_jog(self):
-    pass
+    jog_constraint = 2
+    max_width = 3
+
+    success = True
+    # PMOS
+    for r in range(self.result.num_rows):
+      for s in range(self.result.num_sites - jog_constraint):
+        if self.result.pmos_cell_at(r, s).get_width() > 0:
+          prev = max_width - self.result.pmos_cell_at(r, s).get_width()
+          has_inc = False
+          for i in range(1, jog_constraint+1):
+            if has_inc:
+              if (max_width - self.result.pmos_cell_at(r, s+i).get_width()) < prev:
+                print("ERROR: Jog constraint FAILED at PMOS row", r, "site", s, "with row", r, "site", s+i)
+                success = False
+            else:
+              if (max_width - self.result.pmos_cell_at(r, s+i).get_width()) > prev:
+                has_inc = True
+            prev = max_width - self.result.pmos_cell_at(r, s+i).get_width()
+
+    # NMOS
+    for r in range(self.result.num_rows):
+      for s in range(self.result.num_sites - jog_constraint):
+        if self.result.nmos_cell_at(r, s).get_width() > 0:
+          prev = max_width - self.result.nmos_cell_at(r, s).get_width()
+          has_inc = False
+          for i in range(1, jog_constraint+1):
+            if has_inc:
+              if (max_width - self.result.nmos_cell_at(r, s + i).get_width()) < prev:
+                print("ERROR: Jog constraint FAILED at NMOS row", r, "site", s, "with row", r, "site", s+i)
+                success = False
+            else:
+              if (max_width - self.result.nmos_cell_at(r, s + i).get_width()) > prev:
+                has_inc = True
+            prev = max_width - self.result.nmos_cell_at(r, s + i).get_width()
+
+    if success:
+      print("Jog constraint PASS")
+    return success
 
   # check whether the diffusion break constraint is met.
   def check_diffusion_break(self):
-    pass
+    diffusion_break_constraint = 2
+
+    success = True
+
+    # PMOS
+    for r in range(self.result.num_rows):
+      s = 0
+      seen_diffusion = False
+      while s < self.result.num_sites:
+        if self.result.pmos_cell_at(r, s).get_width() == 0:
+          i = s+1
+          next_used_cell = -1
+
+          while i < self.result.num_sites:
+            if self.result.pmos_cell_at(r, i).get_width() > 0:
+              next_used_cell = i
+              break
+            i += 1
+
+          if seen_diffusion and next_used_cell != -1 and (next_used_cell - s) < diffusion_break_constraint:
+            print("ERROR: Diffusion break constraint FAILED at PMOS row", r, "site", s, "site", s, "with row", r, "site", next_used_cell, ". Required diffusion break of", diffusion_break_constraint, ", has break of", (next_used_cell - s))
+            success = False
+
+          if next_used_cell == -1:
+            break
+          else:
+            s = next_used_cell + 1
+        else:
+          seen_diffusion = True
+          s += 1
+
+    # NMOS
+    for r in range(self.result.num_rows):
+      s = 0
+      seen_diffusion = False
+      while s < self.result.num_sites:
+        if self.result.nmos_cell_at(r, s).get_width() == 0:
+          i = s + 1
+          next_used_cell = -1
+
+          while i < self.result.num_sites:
+            if self.result.nmos_cell_at(r, i).get_width() > 0:
+              next_used_cell = i
+              break
+            i += 1
+
+          if seen_diffusion and next_used_cell != -1 and (next_used_cell - s) < diffusion_break_constraint:
+            print("ERROR: Diffusion break constraint FAILED at NMOS row", r, "site", s, "site", s, "with row", r,
+                  "site", next_used_cell, ". Required diffusion break of", diffusion_break_constraint, ", has break of",
+                  (next_used_cell - s))
+            success = False
+
+          if next_used_cell == -1:
+            break
+          else:
+            s = next_used_cell + 1
+        else:
+          seen_diffusion = True
+          s += 1
+
+    if success:
+      print("Diffusion break constraint PASS")
+    return success
 
   def check_widths_sum_up_to_original_width(self):
     pmos_names = {}
     nmos_names = {}
+    success = True
     for r in range(self.result.num_rows):
       for s in range(self.result.num_sites):
         pmos = self.result.pmos_cell_at(r, s)        
@@ -107,6 +209,7 @@ class Checker(object):
           pmos_names[pmos.get_transistor_name()] = pmos.get_transistor()
         if nmos.get_transistor_name() != "EMPTY":
           nmos_names[nmos.get_transistor_name()] = nmos.get_transistor()
+
     # check whether each pmos/nmos sub-transistors have width that sum
     # up to the original one.
     for name in pmos_names :
@@ -118,9 +221,26 @@ class Checker(object):
             all_sub_transistors.append(pmos_block)
       # check if all blocks sum up to given width
       width = sum(list(map(lambda x: x.get_width(), all_sub_transistors)))
-      if width != pmos_names[pmos].width:
-        print("ERROR: transistor ", name, " incorrectly split into ", len(all_sub_transistors), " blocks of width ", width, " but original width is ", pmos_names.width)
-    # TODO: do the same for the NMOS grid
+      if width != pmos_names[name].numfins:
+        print("ERROR: Transistor", name, "incorrectly split into", len(all_sub_transistors), "blocks of width", width, "but original width is", pmos_names[name].numfins)
+        success = False
+
+    for name in nmos_names :
+      all_sub_transistors = []
+      for r in range(self.result.num_rows):
+        for s in range(self.result.num_sites):
+          nmos_block = self.result.nmos_cell_at(r, s)
+          if nmos_block.get_transistor_name() == name:
+            all_sub_transistors.append(nmos_block)
+      # check if all blocks sum up to given width
+      width = sum(list(map(lambda x: x.get_width(), all_sub_transistors)))
+      if width != nmos_names[name].numfins:
+        print("ERROR: Transistor", name, "incorrectly split into", len(all_sub_transistors), "blocks of width", width, "but original width is", nmos_names[name].numfins)
+        success = False
+
+    if success:
+      print("Width sum PASS")
+    return success
     
 
 
