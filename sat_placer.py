@@ -12,13 +12,21 @@ class ResultBlock(object):
     It could also be empty --- which represents the case where no transistor
     is placed in the particular block.
   """
-  
+  # transistor is a instance of parser.Transistor 
   def __init__(self, width, transistor=None):
     self.width = width 
     self.transistor = transistor
 
+  # width of the current transistor block, 
+  # 
   def get_width(self):
     return self.width
+
+  def get_transistor_name(self):
+    if self.transistor != None:
+      return self.transistor.name
+    else:
+      return "EMPTY"
 
   def is_empty(self): # check if this is an empty block
     return self.transistor == None
@@ -64,6 +72,60 @@ class Result(object):
   def nmos_cell_at(self, r, s):
     return self.nmos_grid[r][s]
 
+
+class Checker(object):
+  """
+    A sample checker class to check legality of placement results.
+    `result` denotes a Result instance outputted by the placer/splitter.
+  """
+  def __init__(self, result):
+    self.result = result
+
+  # check whether the jog constraint is met.
+  """
+  +   +   +   +
+  |   |   |   |
+  |   +---+   |
+  |   |jog|   |
+  +---+   +---+
+  """
+  def check_jog(self):
+    pass
+
+  # check whether the diffusion break constraint is met.
+  def check_diffusion_break(self):
+    pass
+
+  def check_widths_sum_up_to_original_width(self):
+    pmos_names = {}
+    nmos_names = {}
+    for r in range(self.result.num_rows):
+      for s in range(self.result.num_sites):
+        pmos = self.result.pmos_cell_at(r, s)        
+        nmos = self.result.nmos_cell_at(r, s)
+        if pmos.get_transistor_name() != "EMPTY":
+          pmos_names[pmos.get_transistor_name()] = pmos.get_transistor()
+        if nmos.get_transistor_name() != "EMPTY":
+          nmos_names[nmos.get_transistor_name()] = nmos.get_transistor()
+    # check whether each pmos/nmos sub-transistors have width that sum
+    # up to the original one.
+    for name in pmos_names :
+      all_sub_transistors = []
+      for r in range(self.result.num_rows):
+        for s in range(self.result.num_sites):
+          pmos_block = self.result.pmos_cell_at(r, s)
+          if pmos_block.get_transistor_name() == name:
+            all_sub_transistors.append(pmos_block)
+      # check if all blocks sum up to given width
+      width = sum(list(map(lambda x: x.get_width(), all_sub_transistors)))
+      if width != pmos_names[pmos].width:
+        print("ERROR: transistor ", name, " incorrectly split into ", len(all_sub_transistors), " blocks of width ", width, " but original width is ", pmos_names.width)
+    # TODO: do the same for the NMOS grid
+    
+
+
+  def check_source_drain_match(self):
+    pass
 
 
 class SATPlacement(object):
