@@ -6,6 +6,66 @@
 
 import z3 
 
+class ResultBlock(object):
+  """
+    A ResultBlock wraps a Transistor instance by giving it a particular width.
+    It could also be empty --- which represents the case where no transistor
+    is placed in the particular block.
+  """
+  
+  def __init__(self, width, transistor=None):
+    self.width = width 
+    self.transistor = transistor
+
+  def get_width(self):
+    return self.width
+
+  def is_empty(self): # check if this is an empty block
+    return self.transistor == None
+
+  def get_transistor(self): # returns None if empty
+    return self.transistor
+
+
+class Result(object):
+  """
+    Represents a result of a SAT-based transistor placer
+    The result is a grid of size num_rows x num_sites.
+    One grid for all pMOS, one grid for all nMOS.
+    Each row of the grid is a list of transistors, each of possibly different widths.
+    If several transistors share diffusion, they are represent individually, for instance,
+    +-----+
+    |  |  |
+    |  +--+
+    |  |
+    +--+
+    This could be the folding result of one big transistor, but we represent them as two
+    separate rectangles on the grid.
+
+      num_rows: integer, representing number of rows
+      num_sites: integer, representing number of sites
+      pmos_grid: list of list of ResultBlock objects, representing the PMOS grid.
+      nmos: grid: similar to above but for NMOS
+  """
+
+  def __init__(self, num_rows, num_sites, pmos_grid, nmos_grid):
+    self.num_rows = num_rows
+    self.num_sites = num_sites
+    self.pmos_grid = pmos_grid
+    self.nmos_grid = nmos_grid
+
+  # get cell at (r, s) in pmos grid
+  # returns a ResultBlock instance 
+  def pmos_cell_at(self, r, s):
+    return self.pmos_grid[r][s]
+
+  # get cell at (r, s) in nmos grid
+  # returns a ResultBlock instance
+  def nmos_cell_at(self, r, s):
+    return self.nmos_grid[r][s]
+
+
+
 class SATPlacement(object):
 
   def __init__(self, num_rows, num_sites, pmos_transistors, nmos_transistors):
