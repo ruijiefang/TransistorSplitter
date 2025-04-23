@@ -38,7 +38,7 @@ class ResultBlock(object):
 
   def get_source(self):
     if self.transistor != None:
-      return self.transistor.source
+      return self.transistor.src
     else:
       return ""
 

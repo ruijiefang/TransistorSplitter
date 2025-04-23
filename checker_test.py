@@ -309,16 +309,274 @@ class DiffusionBreakTest(unittest.TestCase):
         print("\nDiffusion Break Test 6:")
         assert self.checker.check_diffusion_break() == False
 
-"""class NetMismatchTest(unittest.TestCase):
+class NetMismatchTest(unittest.TestCase):
     def setUp(self):
-        self.p1_1 = ResultBlock(1, Transistor("p1_1", "", "", "", "", True, 100, 100, 1))
-        self.p1_2 = ResultBlock(1, Transistor("p1_2", "", "", "", "", True, 100, 100, 1))
-        self.p1_3 = ResultBlock(1, Transistor("p1_3", "", "", "", "", True, 100, 100, 1))
-        self.p1_4 = ResultBlock(1, Transistor("p1_4", "", "", "", "", True, 100, 100, 1))
-        self.p1_5 = ResultBlock(1, Transistor("p1_5", "", "", "", "", True, 100, 100, 1))
-        self.p1_6 = ResultBlock(1, Transistor("p1_6", "", "", "", "", True, 100, 100, 1))
-        self.p1_7 = ResultBlock(1, Transistor("p1_7", "", "", "", "", True, 100, 100, 1))
-        self.p1_8 = ResultBlock(1, Transistor("p1_8", "", "", "", "", True, 100, 100, 1))
-"""
+        pass
+
+    def test1(self):
+        self.p1_1 = ResultBlock(1, "S-D", Transistor("p1_1", "n2", "", "n1", "", True, 100, 100, 1))
+        self.p1_2 = ResultBlock(1, "S-D", Transistor("p1_2", "n3", "", "n2", "", True, 100, 100, 1))
+        self.p1_3 = ResultBlock(1, "S-D", Transistor("p1_3", "n4", "", "n3", "", True, 100, 100, 1))
+        self.p1_4 = ResultBlock(1, "S-D", Transistor("p1_4", "n5", "", "n4", "", True, 100, 100, 1))
+
+        self.n1_1 = ResultBlock(1, "D-S", Transistor("n1_1", "n6", "", "n7", "", False, 100, 100, 1))
+        self.n1_2 = ResultBlock(1, "D-S", Transistor("n1_2", "n7", "", "n8", "", False, 100, 100, 1))
+        self.n1_3 = ResultBlock(1, "D-S", Transistor("n1_3", "n8", "", "n9", "", False, 100, 100, 1))
+        self.n1_4 = ResultBlock(1, "D-S", Transistor("n1_4", "n9", "", "n10", "", False, 100, 100, 1))
+
+        self.pmos_grid = [self.p1_1, self.p1_2, self.p1_3, self.p1_4]
+        self.nmos_grid = [self.n1_1, self.n1_2, self.n1_3, self.n1_4]
+
+        self.result = Result(1, 4, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 1:")
+        assert self.checker.check_source_drain_match() == True
+
+    def test2(self):
+        self.p1_1 = ResultBlock(1, "S-D", Transistor("p1_1", "n2", "", "n1", "", True, 100, 100, 1))
+        self.p1_2 = ResultBlock(1, "S-D", Transistor("p1_2", "n3", "", "n2", "", True, 100, 100, 1))
+        self.p1_3 = ResultBlock(1, "S-D", Transistor("p1_3", "n4", "", "n3", "", True, 100, 100, 1))
+        self.p1_4 = ResultBlock(1, "S-D", Transistor("p1_4", "n5", "", "n4", "", True, 100, 100, 1))
+
+        self.p0_1 = ResultBlock(0, "", None)
+
+        self.n1_1 = ResultBlock(1, "D-S", Transistor("n1_1", "n6", "", "n7", "", False, 100, 100, 1))
+        self.n1_2 = ResultBlock(1, "D-S", Transistor("n1_2", "n7", "", "n8", "", False, 100, 100, 1))
+        self.n1_3 = ResultBlock(1, "D-S", Transistor("n1_3", "n8", "", "n9", "", False, 100, 100, 1))
+        self.n1_4 = ResultBlock(1, "D-S", Transistor("n1_4", "n9", "", "n10", "", False, 100, 100, 1))
+
+        self.n0_1 = ResultBlock(0, "", None)
+
+        self.pmos_grid = [self.p0_1, self.p1_1, self.p1_2, self.p1_3, self.p1_4]
+        self.nmos_grid = [self.n1_1, self.n1_2, self.n1_3, self.n1_4, self.n0_1]
+
+        self.result = Result(1, 5, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 2:")
+        assert self.checker.check_source_drain_match() == True
+
+    def test3(self):
+        self.p1_1 = ResultBlock(1, "S-D", Transistor("p1_1", "n2", "", "n1", "", True, 100, 100, 1))
+        self.p1_2 = ResultBlock(1, "S-D", Transistor("p1_2", "n3", "", "n2", "", True, 100, 100, 1))
+        self.p1_3 = ResultBlock(1, "S-D", Transistor("p1_3", "n4", "", "n3", "", True, 100, 100, 1))
+        self.p1_4 = ResultBlock(1, "S-D", Transistor("p1_4", "n5", "", "n4", "", True, 100, 100, 1))
+
+        self.p0_1 = ResultBlock(0, "", None)
+
+        self.n1_1 = ResultBlock(1, "D-S", Transistor("n1_1", "n6", "", "n7", "", False, 100, 100, 1))
+        self.n1_2 = ResultBlock(1, "D-S", Transistor("n1_2", "n7", "", "n8", "", False, 100, 100, 1))
+        self.n1_3 = ResultBlock(1, "D-S", Transistor("n1_3", "n8", "", "n9", "", False, 100, 100, 1))
+        self.n1_4 = ResultBlock(1, "D-S", Transistor("n1_4", "n9", "", "n10", "", False, 100, 100, 1))
+
+        self.n0_1 = ResultBlock(0, "", None)
+
+        self.pmos_grid = [self.p1_1, self.p0_1, self.p1_2, self.p1_3, self.p1_4]
+        self.nmos_grid = [self.n1_1, self.n1_2, self.n0_1, self.n1_3, self.n1_4]
+
+        self.result = Result(1, 5, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 3:")
+        assert self.checker.check_source_drain_match() == True
+
+    def test4(self):
+        self.p0_1 = ResultBlock(0, "", None)
+
+        self.n0_1 = ResultBlock(0, "", None)
+
+        self.pmos_grid = [self.p0_1]
+        self.nmos_grid = [self.n0_1]
+
+        self.result = Result(1, 1, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 4:")
+        assert self.checker.check_source_drain_match() == True
+
+    def test5(self):
+        self.p1_1 = ResultBlock(1, "S-D", Transistor("p1_1", "n2", "", "n1", "", True, 100, 100, 1))
+
+        self.n1_1 = ResultBlock(1, "D-S", Transistor("n1_1", "n6", "", "n7", "", False, 100, 100, 1))
+
+        self.pmos_grid = [self.p1_1]
+        self.nmos_grid = [self.n1_1]
+
+        self.result = Result(1, 1, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 5:")
+        assert self.checker.check_source_drain_match() == True
+
+    def test6(self):
+        self.p1_1 = ResultBlock(1, "S-D", Transistor("p1_1", "n2", "", "n1", "", True, 100, 100, 1))
+        self.p1_2 = ResultBlock(1, "D-S", Transistor("p1_2", "n3", "", "n2", "", True, 100, 100, 1))
+        self.p1_3 = ResultBlock(1, "S-D", Transistor("p1_3", "n4", "", "n3", "", True, 100, 100, 1))
+        self.p1_4 = ResultBlock(1, "S-D", Transistor("p1_4", "n5", "", "n4", "", True, 100, 100, 1))
+
+        self.n1_1 = ResultBlock(1, "D-S", Transistor("n1_1", "n6", "", "n7", "", False, 100, 100, 1))
+        self.n1_2 = ResultBlock(1, "D-S", Transistor("n1_2", "n7", "", "n8", "", False, 100, 100, 1))
+        self.n1_3 = ResultBlock(1, "S-D", Transistor("n1_3", "n8", "", "n9", "", False, 100, 100, 1))
+        self.n1_4 = ResultBlock(1, "D-S", Transistor("n1_4", "n9", "", "n10", "", False, 100, 100, 1))
+
+        self.pmos_grid = [self.p1_1, self.p1_2, self.p1_3, self.p1_4]
+        self.nmos_grid = [self.n1_1, self.n1_2, self.n1_3, self.n1_4]
+
+        self.result = Result(1, 4, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 6:")
+        assert self.checker.check_source_drain_match() == False
+
+    def test7(self):
+        self.p1_1 = ResultBlock(1, "S-D", Transistor("p1_1", "n1", "", "n2", "", True, 100, 100, 1))
+        self.p1_2 = ResultBlock(1, "S-D", Transistor("p1_2", "n3", "", "n2", "", True, 100, 100, 1))
+        self.p1_3 = ResultBlock(1, "S-D", Transistor("p1_3", "n4", "", "n3", "", True, 100, 100, 1))
+        self.p1_4 = ResultBlock(1, "S-D", Transistor("p1_4", "n5", "", "n4", "", True, 100, 100, 1))
+
+        self.n1_1 = ResultBlock(1, "D-S", Transistor("n1_1", "n7", "", "n6", "", False, 100, 100, 1))
+        self.n1_2 = ResultBlock(1, "D-S", Transistor("n1_2", "n7", "", "n8", "", False, 100, 100, 1))
+        self.n1_3 = ResultBlock(1, "D-S", Transistor("n1_3", "n8", "", "n9", "", False, 100, 100, 1))
+        self.n1_4 = ResultBlock(1, "D-S", Transistor("n1_4", "n9", "", "n10", "", False, 100, 100, 1))
+
+        self.pmos_grid = [self.p1_1, self.p1_2, self.p1_3, self.p1_4]
+        self.nmos_grid = [self.n1_1, self.n1_2, self.n1_3, self.n1_4]
+
+        self.result = Result(1, 4, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 7:")
+        assert self.checker.check_source_drain_match() == False
+
+    def test8(self):
+        self.p1_1 = ResultBlock(1, "D-S", Transistor("p1_1", "n1", "", "n2", "", True, 100, 100, 1))
+        self.p1_2 = ResultBlock(1, "D-S", Transistor("p1_2", "n2", "", "n3", "", True, 100, 100, 1))
+        self.p1_3 = ResultBlock(1, "D-S", Transistor("p1_3", "n3", "", "n4", "", True, 100, 100, 1))
+        self.p1_4 = ResultBlock(1, "D-S", Transistor("p1_4", "n4", "", "n5", "", True, 100, 100, 1))
+
+        self.n1_1 = ResultBlock(1, "S-D", Transistor("n1_1", "n7", "", "n6", "", False, 100, 100, 1))
+        self.n1_2 = ResultBlock(1, "S-D", Transistor("n1_2", "n8", "", "n7", "", False, 100, 100, 1))
+        self.n1_3 = ResultBlock(1, "S-D", Transistor("n1_3", "n9", "", "n8", "", False, 100, 100, 1))
+        self.n1_4 = ResultBlock(1, "S-D", Transistor("n1_4", "n10", "", "n9", "", False, 100, 100, 1))
+
+        self.pmos_grid = [self.p1_1, self.p1_2, self.p1_3, self.p1_4]
+        self.nmos_grid = [self.n1_1, self.n1_2, self.n1_3, self.n1_4]
+
+        self.result = Result(1, 4, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 8:")
+        assert self.checker.check_source_drain_match() == True
+
+    def test9(self):
+        self.p1_1 = ResultBlock(1, "D-S", Transistor("p1_1", "n1", "", "n2", "", True, 100, 100, 1))
+        self.p1_2 = ResultBlock(1, "S-D", Transistor("p1_2", "n2", "", "n3", "", True, 100, 100, 1))
+        self.p1_3 = ResultBlock(1, "D-S", Transistor("p1_3", "n3", "", "n4", "", True, 100, 100, 1))
+        self.p1_4 = ResultBlock(1, "D-S", Transistor("p1_4", "n4", "", "n5", "", True, 100, 100, 1))
+
+        self.n1_1 = ResultBlock(1, "S-D", Transistor("n1_1", "n7", "", "n6", "", False, 100, 100, 1))
+        self.n1_2 = ResultBlock(1, "S-D", Transistor("n1_2", "n8", "", "n7", "", False, 100, 100, 1))
+        self.n1_3 = ResultBlock(1, "D-S", Transistor("n1_3", "n9", "", "n8", "", False, 100, 100, 1))
+        self.n1_4 = ResultBlock(1, "S-D", Transistor("n1_4", "n10", "", "n9", "", False, 100, 100, 1))
+
+        self.pmos_grid = [self.p1_1, self.p1_2, self.p1_3, self.p1_4]
+        self.nmos_grid = [self.n1_1, self.n1_2, self.n1_3, self.n1_4]
+
+        self.result = Result(1, 4, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 9:")
+        assert self.checker.check_source_drain_match() == False
+
+    def test10(self):
+        self.p1_1 = ResultBlock(1, "S-D", Transistor("p1_1", "n1", "", "n2", "", True, 100, 100, 1))
+        self.p1_2 = ResultBlock(1, "D-S", Transistor("p1_2", "n2", "", "n3", "", True, 100, 100, 1))
+        self.p1_3 = ResultBlock(1, "D-S", Transistor("p1_3", "n3", "", "n4", "", True, 100, 100, 1))
+        self.p1_4 = ResultBlock(1, "D-S", Transistor("p1_4", "n4", "", "n5", "", True, 100, 100, 1))
+
+        self.n1_1 = ResultBlock(1, "S-D", Transistor("n1_1", "n7", "", "n6", "", False, 100, 100, 1))
+        self.n1_2 = ResultBlock(1, "S-D", Transistor("n1_2", "n8", "", "n7", "", False, 100, 100, 1))
+        self.n1_3 = ResultBlock(1, "S-D", Transistor("n1_3", "n9", "", "n8", "", False, 100, 100, 1))
+        self.n1_4 = ResultBlock(1, "D-S", Transistor("n1_4", "n10", "", "n9", "", False, 100, 100, 1))
+
+        self.pmos_grid = [self.p1_1, self.p1_2, self.p1_3, self.p1_4]
+        self.nmos_grid = [self.n1_1, self.n1_2, self.n1_3, self.n1_4]
+
+        self.result = Result(1, 4, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 10:")
+        assert self.checker.check_source_drain_match() == False
+
+    def test11(self):
+        self.p1_1 = ResultBlock(1, "D-S", Transistor("p1_1", "n1", "", "n2", "", True, 100, 100, 1))
+        self.p1_2 = ResultBlock(1, "D-S", Transistor("p1_2", "n2", "", "n3", "", True, 100, 100, 1))
+        self.p1_3 = ResultBlock(1, "D-S", Transistor("p1_3", "n3", "", "n4", "", True, 100, 100, 1))
+        self.p1_4 = ResultBlock(1, "D-S", Transistor("p1_4", "n4", "", "n5", "", True, 100, 100, 1))
+        self.p1_5 = ResultBlock(1, "D-S", Transistor("p1_5", "n11", "", "n12", "", True, 100, 100, 1))
+        self.p1_6 = ResultBlock(1, "D-S", Transistor("p1_6", "n12", "", "n13", "", True, 100, 100, 1))
+        self.p1_7 = ResultBlock(1, "D-S", Transistor("p1_7", "n13", "", "n14", "", True, 100, 100, 1))
+        self.p1_8 = ResultBlock(1, "D-S", Transistor("p1_8", "n14", "", "n15", "", True, 100, 100, 1))
+
+        self.n1_1 = ResultBlock(1, "S-D", Transistor("n1_1", "n7", "", "n6", "", False, 100, 100, 1))
+        self.n1_2 = ResultBlock(1, "S-D", Transistor("n1_2", "n8", "", "n7", "", False, 100, 100, 1))
+        self.n1_3 = ResultBlock(1, "S-D", Transistor("n1_3", "n9", "", "n8", "", False, 100, 100, 1))
+        self.n1_4 = ResultBlock(1, "S-D", Transistor("n1_4", "n10", "", "n9", "", False, 100, 100, 1))
+        self.n1_5 = ResultBlock(1, "S-D", Transistor("n1_5", "n17", "", "n16", "", False, 100, 100, 1))
+        self.n1_6 = ResultBlock(1, "S-D", Transistor("n1_6", "n18", "", "n17", "", False, 100, 100, 1))
+        self.n1_7 = ResultBlock(1, "S-D", Transistor("n1_7", "n19", "", "n18", "", False, 100, 100, 1))
+        self.n1_8 = ResultBlock(1, "S-D", Transistor("n1_8", "n20", "", "n19", "", False, 100, 100, 1))
+
+        self.pmos_grid = [self.p1_1, self.p1_2, self.p1_3, self.p1_4, self.p1_5, self.p1_6, self.p1_7, self.p1_8]
+        self.nmos_grid = [self.n1_1, self.n1_2, self.n1_3, self.n1_4, self.n1_5, self.n1_6, self.n1_7, self.n1_8]
+
+        self.result = Result(2, 4, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 11:")
+        assert self.checker.check_source_drain_match() == True
+
+    def test12(self):
+        self.p1_1 = ResultBlock(1, "D-S", Transistor("p1_1", "n1", "", "n2", "", True, 100, 100, 1))
+        self.p1_2 = ResultBlock(1, "D-S", Transistor("p1_2", "n2", "", "n3", "", True, 100, 100, 1))
+        self.p1_3 = ResultBlock(1, "D-S", Transistor("p1_3", "n3", "", "n4", "", True, 100, 100, 1))
+        self.p1_4 = ResultBlock(1, "D-S", Transistor("p1_4", "n4", "", "n5", "", True, 100, 100, 1))
+        self.p1_5 = ResultBlock(1, "D-S", Transistor("p1_5", "n11", "", "n12", "", True, 100, 100, 1))
+        self.p1_6 = ResultBlock(1, "S-D", Transistor("p1_6", "n12", "", "n13", "", True, 100, 100, 1))
+        self.p1_7 = ResultBlock(1, "D-S", Transistor("p1_7", "n13", "", "n14", "", True, 100, 100, 1))
+        self.p1_8 = ResultBlock(1, "D-S", Transistor("p1_8", "n14", "", "n15", "", True, 100, 100, 1))
+
+        self.n1_1 = ResultBlock(1, "S-D", Transistor("n1_1", "n7", "", "n6", "", False, 100, 100, 1))
+        self.n1_2 = ResultBlock(1, "S-D", Transistor("n1_2", "n8", "", "n7", "", False, 100, 100, 1))
+        self.n1_3 = ResultBlock(1, "S-D", Transistor("n1_3", "n9", "", "n8", "", False, 100, 100, 1))
+        self.n1_4 = ResultBlock(1, "S-D", Transistor("n1_4", "n10", "", "n9", "", False, 100, 100, 1))
+        self.n1_5 = ResultBlock(1, "S-D", Transistor("n1_5", "n17", "", "n16", "", False, 100, 100, 1))
+        self.n1_6 = ResultBlock(1, "D-S", Transistor("n1_6", "n18", "", "n17", "", False, 100, 100, 1))
+        self.n1_7 = ResultBlock(1, "S-D", Transistor("n1_7", "n19", "", "n18", "", False, 100, 100, 1))
+        self.n1_8 = ResultBlock(1, "S-D", Transistor("n1_8", "n20", "", "n19", "", False, 100, 100, 1))
+
+        self.pmos_grid = [self.p1_1, self.p1_2, self.p1_3, self.p1_4, self.p1_5, self.p1_6, self.p1_7, self.p1_8]
+        self.nmos_grid = [self.n1_1, self.n1_2, self.n1_3, self.n1_4, self.n1_5, self.n1_6, self.n1_7, self.n1_8]
+
+        self.result = Result(2, 4, self.pmos_grid, self.nmos_grid)
+
+        self.checker = Checker(self.result)
+
+        print("\nNet Match Test 12:")
+        assert self.checker.check_source_drain_match() == False
+
+
 if __name__ == "__main__":
     unittest.main()
