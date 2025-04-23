@@ -14,9 +14,10 @@ class ResultBlock(object):
     is placed in the particular block.
   """
   # transistor is a instance of parser.Transistor 
-  def __init__(self, width, transistor=None):
+  def __init__(self, width, flip_type, transistor=None):
     self.width = width 
     self.transistor = transistor
+    self.flip_type = flip_type # either string "S-D" or "D-S"
 
   # width of the current transistor block, 
   # 
@@ -34,6 +35,9 @@ class ResultBlock(object):
 
   def get_transistor(self): # returns None if empty
     return self.transistor
+  
+  def get_flip_type(self):
+    return self.flip_type
 
 
 class Result(object):
