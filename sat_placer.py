@@ -52,7 +52,7 @@ class ResultBlock(object):
     return self.flip_type
 
 # global variable for empty block
-EMPTY_BLOCK = ResultBlock(0, 0, None)
+EMPTY_BLOCK = ResultBlock(0, "", None)
 
 class Result(object):
   """
@@ -331,13 +331,15 @@ class Checker(object):
 
 class SATPlacement(object):
 
-  def __init__(self, num_rows, num_sites, pmos_transistors, nmos_transistors):
+  def __init__(self, num_rows, num_sites, pmos_transistors, nmos_transistors, diffusion_break):
     self.constraints = []
     self.variables = []
     self.sharable = [[False if x.gate!=y.gate else True for y in nmos_transistors] for x in pmos_transistors]
     # 1st bit gives direction of pmos in TP-cell, 0 = (D-S), 1 = (S-D) 
     self.flip_types = [0, 1]
     
+    self.diffusion_break = diffusion_break
+
     self.pmos = pmos_transistors
     self.nmos = nmos_transistors
 
@@ -425,7 +427,9 @@ class SATPlacement(object):
         # c)
         (f"SD-DS flip type for {mos0}+{mos1}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_DS), mos0.drain == mos1.drain)),
         # d)
-        (f"SD-SD flip type for {mos0}+{mos1}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_SD), mos0.drain == mos1.src))
+        (f"SD-SD flip type for {mos0}+{mos1}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_SD), mos0.drain == mos1.src)), 
+        (f"Exactly one flip type for {mos0}", z3.PbEq([(f_mos0_DS, 1), (f_mos0_SD, 1)], 1)),
+        (f"Exactly one flip type for {mos1}", z3.PbEq([(f_mos1_DS, 1), (f_mos1_SD, 1)], 1))
       ]
     for r in range(self.num_rows):
       for s in range(self.num_sites - 1):
@@ -441,8 +445,29 @@ class SATPlacement(object):
               nmos0_c = self.c_vars_n[r][s][nmos0.name]
               nmos1_c = self.c_vars_n[r][s][nmos1.name]
               self.constraints += neighbor_constraint(r, s, nmos0, nmos1, nmos0_c, nmos1_c)
-
-
+    # diffusion break constraint 
+    if self.diffusion_break <= 1:
+      return
+    for r in range(self.num_rows):
+      for s in range(self.num_sites):
+        for pmos in self.pmos:
+          conjuncts = []
+          c_var_imp = self.c_vars_p[r][s][pmos.name]
+          for i in range(self.diffusion_break):
+            if s + i < self.num_sites:
+              c_var = self.c_vars_p[r][s + i][pmos.name]
+              conjuncts.append(z3.Not(c_var))
+          self.constraints.append((f"diffusion break for {pmos.name} at ({r}, {s})", z3.Implies(z3.Not(c_var_imp), z3.And(conjuncts))))
+        for nmos in self.nmos:
+          conjuncts = []
+          c_var_imp = self.c_vars_n[r][s][nmos.name]
+          for i in range(self.diffusion_break):
+            if s + i < self.num_sites:
+              c_var = self.c_vars_n[r][s+i][nmos.name]
+              conjuncts.append(z3.Not(c_var))
+          self.constraints.append((f"diffusion break for {nmos.name} at ({r}, {s})", z3.Implies(z3.Not(c_var_imp), z3.And(conjuncts))))
+          
+        
   def solve(self):
     s = z3.Solver()
     i = 0
@@ -459,8 +484,22 @@ class SATPlacement(object):
   def evaluate(self, v):
     return self.z3model.evaluate(v, model_completion = False)
 
+  def parse_flip_type(self, mos): # TODO
+    f0 = self.evaluate(self.flip_vars[mos.name][0])
+    f1 = self.evaluate(self.flip_vars[mos.name][1])
+    if f0 and f1:
+      print("ERROR: flip types are both true for mos ", str(mos))
+      exit(1)
+    else:
+      if f0:
+        return "D-S"
+      else:
+        assert f1
+        return "S-D"
+    
+
   # m is a Z3model
-  def parse_smt_result(self, m):
+  def parse_smt_result(self):
     global EMPTY_BLOCK
     result_grid_pmos = []
     result_grid_nmos = []
@@ -472,14 +511,18 @@ class SATPlacement(object):
           c_var_pmos_r_s = self.c_vars_p[r][s][pmos.name]
           if self.evaluate(c_var_pmos_r_s):
             # TODO
-            pass
+            flip_type = self.parse_flip_type(pmos)
+            block_rs = ResultBlock(pmos.width, flip_type, pmos) # pmos.width = width for placement, not so for splitting.
+            pmos_row.append(block_rs)
           else:
             pmos_row.append(EMPTY_BLOCK)
         for nmos in self.nmos:
           c_var_nmos_r_s = self.c_vars_n[r][s][nmos.name]
           if self.evaluate(c_var_nmos_r_s):
             # TODO
-            pass
+            flip_type = self.parse_flip_type(nmos)
+            block_rs = ResultBlock(nmos.width, flip_type, nmos) # nmos.width = width for placement, not so for splitting.
+            pmos_row.append(block_rs)
           else:
             nmos_row.append(EMPTY_BLOCK)
       result_grid_pmos.append(pmos_row)
@@ -521,5 +564,6 @@ s = SATPlacement(
    #   "n_B", "wire1", "gate_1", "wire2", "blk1", False, 3, 3, 1
    # )
   #]
+  , diffusion_break = 1 # diffusion break
   )
 s.solve()
