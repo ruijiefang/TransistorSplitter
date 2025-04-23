@@ -84,13 +84,14 @@ class Result(object):
   # get cell at (r, s) in pmos grid
   # returns a ResultBlock instance 
   def pmos_cell_at(self, r, s):
-    #return self.pmos_grid[r][s]
-    return self.pmos_grid[r*self.num_sites + s]
+    return self.pmos_grid[r][s]
+    #return self.pmos_grid[r*self.num_sites + s]
 
   # get cell at (r, s) in nmos grid
   # returns a ResultBlock instance
   def nmos_cell_at(self, r, s):
-    return self.nmos_grid[r*self.num_sites + s]
+    return self.nmos_grid[r][s]
+    #return self.nmos_grid[r*self.num_sites + s]
 
 
 class Checker(object):
@@ -567,3 +568,9 @@ s = SATPlacement(
   , diffusion_break = 1 # diffusion break
   )
 s.solve()
+r = s.parse_smt_result()
+c = Checker(r)
+c.check_source_drain_match()
+c.check_diffusion_break()
+c.check_jog()
+c.check_widths_sum_up_to_original_width()
