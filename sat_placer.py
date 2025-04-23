@@ -51,6 +51,8 @@ class ResultBlock(object):
   def get_flip_type(self):
     return self.flip_type
 
+# global variable for empty block
+EMPTY_BLOCK = ResultBlock(0, 0, None)
 
 class Result(object):
   """
@@ -368,13 +370,13 @@ class SATPlacement(object):
           self.c_vars_n[r][s][nmos.name] = nmos_c
           loc_pb_nmos.append((nmos_c, 1)) # weight 1 per term
         print("loc_pb_pmos: ", loc_pb_pmos)
-        self.constraints.append((f"one PMOS at ({r}, {s})", z3.PbEq(loc_pb_pmos, 1))) # one pmos per (r,s)
-        self.constraints.append((f"one NMOS at ({r}, {s})", z3.PbEq(loc_pb_nmos, 1))) # one nmos per (r,s)
+        self.constraints.append((f"at most one PMOS at ({r}, {s})", z3.PbLe(loc_pb_pmos, 1))) # at most one pmos per (r,s)
+        self.constraints.append((f"at most one NMOS at ({r}, {s})", z3.PbLe(loc_pb_nmos, 1))) # at most one nmos per (r,s)
 
         for pmos in self.pmos:
           for nmos in self.nmos:
             # constraint about transistor pairing
-            self.constraints.append(f"pairing between {pmos.name} and {nmos.name}", z3.Implies(z3.And(pmos_c, nmos_c), self.sharable[pmos.name][nmos.name]))
+            self.constraints.append((f"pairing between {pmos.name} and {nmos.name}", z3.Implies(z3.And(pmos_c, nmos_c), self.sharable[pmos.name][nmos.name])))
     # pb constraint for each {nmos|pmos} transistor:
     # each pmos is placed in exactly one location
     for mos in self.pmos + self.nmos:
@@ -417,13 +419,13 @@ class SATPlacement(object):
       f_mos1_SD = self.flip_vars[mos1.name][1]
       return [
         # a)
-        ("DS-DS flip type", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_DS, f_mos1_DS), mos0.src == mos1.drain)),
+        (f"DS-DS flip type for {mos0}+{mos1}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_DS, f_mos1_DS), mos0.src == mos1.drain)),
         # b)
-        ("DS-SD flip type", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_DS, f_mos1_SD), mos0.src == mos1.src)),
+        (f"DS-SD flip type for {mos0}+{mos1}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_DS, f_mos1_SD), mos0.src == mos1.src)),
         # c)
-        ("SD-DS flip type", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_DS), mos0.drain == mos1.drain)),
+        (f"SD-DS flip type for {mos0}+{mos1}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_DS), mos0.drain == mos1.drain)),
         # d)
-        ("SD-SD flip type", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_SD), mos0.drain == mos1.src))
+        (f"SD-SD flip type for {mos0}+{mos1}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_SD), mos0.drain == mos1.src))
       ]
     for r in range(self.num_rows):
       for s in range(self.num_sites - 1):
@@ -446,12 +448,44 @@ class SATPlacement(object):
     i = 0
     for x in self.constraints:
       print(' Solver: adding constraint', i, ': ', str(x))
-      s.add(x)
+      s.add(x[1])
       i = i + 1
     r = s.check()
     print(' Solver: RESULT is: ', r)
-    print(' get_model output: ', str(s.get_model()))
-    return r
+    print(' get_model output: ', str(s.model()))
+    self.z3model = s.model()
+    return (r, s.model())
+
+  def evaluate(self, v):
+    return self.z3model.evaluate(v, model_completion = False)
+
+  # m is a Z3model
+  def parse_smt_result(self, m):
+    global EMPTY_BLOCK
+    result_grid_pmos = []
+    result_grid_nmos = []
+    for r in range(self.num_rows):
+      pmos_row = []
+      nmos_row = []
+      for s in range(self.num_sites):
+        for pmos in self.pmos:
+          c_var_pmos_r_s = self.c_vars_p[r][s][pmos.name]
+          if self.evaluate(c_var_pmos_r_s):
+            # TODO
+            pass
+          else:
+            pmos_row.append(EMPTY_BLOCK)
+        for nmos in self.nmos:
+          c_var_nmos_r_s = self.c_vars_n[r][s][nmos.name]
+          if self.evaluate(c_var_nmos_r_s):
+            # TODO
+            pass
+          else:
+            nmos_row.append(EMPTY_BLOCK)
+      result_grid_pmos.append(pmos_row)
+      result_grid_nmos.append(nmos_row)
+    return Result(self.num_rows, self.num_sites, result_grid_pmos, result_grid_nmos)
+
 
 
 s = SATPlacement(
@@ -471,11 +505,21 @@ s = SATPlacement(
     Transistor(
       "p_D", "wire2","gate_3", "wire3", "blk3", True, 3, 3, 1
     )
-  ], nmos_transistors = [ 
+  ],
+   nmos_transistors= [
     Transistor(
       "n_A", "wire0", "gate_0", "wire2", "blk0", False, 3,3,1
-    ), Transistor(
-      "n_B", "wire1", "gate_1", "wire2", "blk1", False, 3, 3, 1
+    ),
+    Transistor(
+      "n_B", "wire0", "gate_1", "wire1", "blk0", False, 3,3,1
     )
-  ])
+   ]
+   # nmos_transistors = [ 
+   # Transistor(
+   #   "n_A", "wire0", "gate_0", "wire2", "blk0", False, 3,3,1
+   # ), Transistor(
+   #   "n_B", "wire1", "gate_1", "wire2", "blk1", False, 3, 3, 1
+   # )
+  #]
+  )
 s.solve()
