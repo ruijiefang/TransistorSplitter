@@ -38,14 +38,10 @@ class Transistor(object):
 #   canvas_width: Width of output image in pixels
 #   canvas_height: Height of output image in pixels
 class Plotter(object):
-    def __init__(self, canvas_width, canvas_height):
-        self.canvas_width = canvas_width
-        self.canvas_height = canvas_height
-
-        self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, self.canvas_width, self.canvas_height)
-        self.context = cairo.Context(self.surface)
-        self.context.set_source_rgb(1, 1, 1)
-        self.context.paint()
+    def __init__(self, result, sites, rows):
+        self.result = result
+        self.sites = sites
+        self.rows = rows
 
         # ASAP7 Design Rules
         self.GATE_ACTIVE_EX_1 = 4
@@ -54,6 +50,11 @@ class Plotter(object):
         self.ACTIVE_S_1 = 27
         self.poly_width = 20
         self.diffusion_length = self.poly_width + self.GATE_ACTIVE_EX_2 + self.GATE_ACTIVE_EX_2
+
+        self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, self.diffusion_length*self.sites, 8*self.ACTIVE_S_1*self.rows)
+        self.context = cairo.Context(self.surface)
+        self.context.set_source_rgb(1, 1, 1)
+        self.context.paint()
 
     # Adds transistor to image
     # Inputs:
@@ -90,6 +91,14 @@ class Plotter(object):
             self.addTransistor(False, column, (row*2)+1, nmos_width)
 
         self.drawPoly(column, row, self.context)
+
+    def plot(self):
+        for r in range(self.result.num_rows):
+            for s in range(self.result.num_sites):
+                print(r, s)
+                print('result block: ', self.result.pmos_cell_at(r,s))
+                print(self.result.pmos_cell_at(r, s).get_width(), self.result.nmos_cell_at(r, s).get_width(), "\n\n")
+                self.addTransistorPair(column=s, row=r, pmos_width=self.result.pmos_cell_at(r, s).get_width(), nmos_width=self.result.nmos_cell_at(r, s).get_width())
 
     # Saves die into an image
     # Inputs:

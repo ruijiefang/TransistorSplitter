@@ -14,7 +14,7 @@ class ResultBlock(object):
     is placed in the particular block.
   """
   # transistor is a instance of parser.Transistor 
-  def __init__(self, width, flip_type, transistor=None):
+  def __init__(self, width, flip_type, transistor):
     self.width = width 
     self.transistor = transistor
     self.flip_type = flip_type # either string "S-D" or "D-S"
@@ -22,7 +22,10 @@ class ResultBlock(object):
   # width of the current transistor block, 
   # 
   def get_width(self):
-    return self.width
+    if self.transistor != None:
+      return self.transistor.numfins
+    else:
+      return 0
 
   def get_transistor_name(self):
     if self.transistor != None:
@@ -43,13 +46,16 @@ class ResultBlock(object):
       return ""
 
   def is_empty(self): # check if this is an empty block
-    return self.transistor == None
+    return self.transistor is None
 
   def get_transistor(self): # returns None if empty
     return self.transistor
   
   def get_flip_type(self):
     return self.flip_type
+
+  def __str__(self):
+    return "ResultBlock(" + str(self.width) + ", " + str(self.flip_type) + ", " + str(self.transistor) +  ")"
 
 # global variable for empty block
 EMPTY_BLOCK = ResultBlock(0, "", None)
@@ -80,17 +86,19 @@ class Result(object):
     self.num_sites = num_sites
     self.pmos_grid = pmos_grid
     self.nmos_grid = nmos_grid
+    print('pmos_grid: ', self.pmos_grid)
+    print('nmos_grid: ', self.nmos_grid)
 
   # get cell at (r, s) in pmos grid
   # returns a ResultBlock instance 
   def pmos_cell_at(self, r, s):
-    #return self.pmos_grid[r][s]
-    return self.pmos_grid[r*self.num_sites + s]
+    return self.pmos_grid[r][s]
+    #return self.pmos_grid[r*self.num_sites + s]
 
   # get cell at (r, s) in nmos grid
   # returns a ResultBlock instance
   def nmos_cell_at(self, r, s):
-    return self.nmos_grid[r*self.num_sites + s]
+    return self.nmos_grid[r][s]
 
 
 class Checker(object):
@@ -98,8 +106,12 @@ class Checker(object):
     A sample checker class to check legality of placement results.
     `result` denotes a Result instance outputted by the placer/splitter.
   """
-  def __init__(self, result):
+  def __init__(self, result, jog_constraint, diffusion_break_constraint, max_width):
     self.result = result
+    self.jog_constraint = jog_constraint
+    self.diffusion_break_constraint = diffusion_break_constraint
+    self.max_width = max_width
+
 
   # check whether the jog constraint is met.
   """
@@ -110,50 +122,47 @@ class Checker(object):
   +---+   +---+
   """
   def check_jog(self):
-    jog_constraint = 2
-    max_width = 3
-
     success = True
     # PMOS
     for r in range(self.result.num_rows):
-      for s in range(self.result.num_sites - jog_constraint):
+      for s in range(self.result.num_sites - self.jog_constraint):
         if self.result.pmos_cell_at(r, s).get_width() > 0:
-          prev = max_width - self.result.pmos_cell_at(r, s).get_width()
+          prev = self.max_width - self.result.pmos_cell_at(r, s).get_width()
           has_inc = False
-          for i in range(1, jog_constraint+1):
+          for i in range(1, self.jog_constraint+1):
             if has_inc:
-              if (max_width - self.result.pmos_cell_at(r, s+i).get_width()) < prev:
+              if (self.max_width - self.result.pmos_cell_at(r, s+i).get_width()) < prev:
                 print("ERROR: Jog constraint FAILED at PMOS row", r, "site", s, "with row", r, "site", s+i)
                 success = False
             else:
-              if (max_width - self.result.pmos_cell_at(r, s+i).get_width()) > prev:
+              if (self.max_width - self.result.pmos_cell_at(r, s+i).get_width()) > prev:
                 has_inc = True
-            prev = max_width - self.result.pmos_cell_at(r, s+i).get_width()
+            prev = self.max_width - self.result.pmos_cell_at(r, s+i).get_width()
 
     # NMOS
     for r in range(self.result.num_rows):
-      for s in range(self.result.num_sites - jog_constraint):
+      for s in range(self.result.num_sites - self.jog_constraint):
         if self.result.nmos_cell_at(r, s).get_width() > 0:
-          prev = max_width - self.result.nmos_cell_at(r, s).get_width()
+          prev = self.max_width - self.result.nmos_cell_at(r, s).get_width()
           has_inc = False
-          for i in range(1, jog_constraint+1):
+          for i in range(1, self.jog_constraint+1):
             if has_inc:
-              if (max_width - self.result.nmos_cell_at(r, s + i).get_width()) < prev:
+              if (self.max_width - self.result.nmos_cell_at(r, s + i).get_width()) < prev:
                 print("ERROR: Jog constraint FAILED at NMOS row", r, "site", s, "with row", r, "site", s+i)
                 success = False
             else:
-              if (max_width - self.result.nmos_cell_at(r, s + i).get_width()) > prev:
+              if (self.max_width - self.result.nmos_cell_at(r, s + i).get_width()) > prev:
                 has_inc = True
-            prev = max_width - self.result.nmos_cell_at(r, s + i).get_width()
+            prev = self.max_width - self.result.nmos_cell_at(r, s + i).get_width()
 
     if success:
-      print("Jog constraint PASS")
+      print("Jog constraint... PASS")
+    else:
+      print("Jog constraint... FAIL")
     return success
 
   # check whether the diffusion break constraint is met.
   def check_diffusion_break(self):
-    diffusion_break_constraint = 2
-
     success = True
 
     # PMOS
@@ -171,8 +180,8 @@ class Checker(object):
               break
             i += 1
 
-          if seen_diffusion and next_used_cell != -1 and (next_used_cell - s) < diffusion_break_constraint:
-            print("ERROR: Diffusion break constraint FAILED at PMOS row", r, "site", s, "site", s, "with row", r, "site", next_used_cell, ". Required diffusion break of", diffusion_break_constraint, ", has break of", (next_used_cell - s))
+          if seen_diffusion and next_used_cell != -1 and (next_used_cell - s) < self.diffusion_break_constraint:
+            print("ERROR: Diffusion break constraint FAILED at PMOS row", r, "site", s, "site", s, "with row", r, "site", next_used_cell, ". Required diffusion break of", self.diffusion_break_constraint, ", has break of", (next_used_cell - s))
             success = False
 
           if next_used_cell == -1:
@@ -198,9 +207,9 @@ class Checker(object):
               break
             i += 1
 
-          if seen_diffusion and next_used_cell != -1 and (next_used_cell - s) < diffusion_break_constraint:
+          if seen_diffusion and next_used_cell != -1 and (next_used_cell - s) < self.diffusion_break_constraint:
             print("ERROR: Diffusion break constraint FAILED at NMOS row", r, "site", s, "site", s, "with row", r,
-                  "site", next_used_cell, ". Required diffusion break of", diffusion_break_constraint, ", has break of",
+                  "site", next_used_cell, ". Required diffusion break of", self.diffusion_break_constraint, ", has break of",
                   (next_used_cell - s))
             success = False
 
@@ -213,7 +222,9 @@ class Checker(object):
           s += 1
 
     if success:
-      print("Diffusion break constraint PASS")
+      print("Diffusion break constraint... PASS")
+    else:
+      print("Diffusion break constraint... FAIL")
     return success
 
   def check_widths_sum_up_to_original_width(self):
@@ -258,10 +269,10 @@ class Checker(object):
         success = False
 
     if success:
-      print("Width sum PASS")
+      print("Width sum... PASS")
+    else:
+      print("Width sum... FAIL")
     return success
-    
-
 
   def check_source_drain_match(self):
     success = True
@@ -279,20 +290,20 @@ class Checker(object):
         if b.get_flip_type() == "S-D":
           if next.get_flip_type() == "S-D":
             if b.get_drain() != next.get_source():
-              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_drain(), next.get_source(),")")
+              print("ERROR: Net mismatch at PMOS row", r, "site", s, "(", b.get_transistor_name() ,") and row", r, "site", s+1, "(", next.get_transistor_name() ,") (Nets", b.get_drain(), next.get_source(),")")
               success = False
           else:
             if b.get_drain() != next.get_drain():
-              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_drain(), next.get_drain(),")")
+              print("ERROR: Net mismatch at PMOS row", r, "site", s, "(", b.get_transistor_name() ,") and row", r, "site", s+1, "(", next.get_transistor_name() ,") (Nets", b.get_drain(), next.get_drain(),")")
               success = False
         else:
           if next.get_flip_type() == "S-D":
             if b.get_source() != next.get_source():
-              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_source(), next.get_source(),")")
+              print("ERROR: Net mismatch at PMOS row", r, "site", s, "(", b.get_transistor_name() ,") and row", r, "site", s+1, "(", next.get_transistor_name() ,") (Nets", b.get_source(), next.get_source(),")")
               success = False
           else:
             if b.get_source() != next.get_drain():
-              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_source(), next.get_drain(),")")
+              print("ERROR: Net mismatch at PMOS row", r, "site", s, "(", b.get_transistor_name() ,") and row", r, "site", s+1, "(", next.get_transistor_name() ,") (Nets", b.get_source(), next.get_drain(),")")
               success = False
 
     # NMOS
@@ -309,24 +320,26 @@ class Checker(object):
         if b.get_flip_type() == "S-D":
           if next.get_flip_type() == "S-D":
             if b.get_drain() != next.get_source():
-              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_drain(), next.get_source(),")")
+              print("ERROR: Net mismatch at NMOS row", r, "site", s, "(", b.get_transistor_name() ,") and row", r, "site", s+1, "((", next.get_transistor_name() ,") Nets", b.get_drain(), next.get_source(),")")
               success = False
           else:
             if b.get_drain() != next.get_drain():
-              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_drain(), next.get_drain(),")")
+              print("ERROR: Net mismatch at NMOS row", r, "site", s, "(", b.get_transistor_name() ,") and row", r, "site", s+1, "(", next.get_transistor_name() ,") (Nets", b.get_drain(), next.get_drain(),")")
               success = False
         else:
           if next.get_flip_type() == "S-D":
             if b.get_source() != next.get_source():
-              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_source(), next.get_source(),")")
+              print("ERROR: Net mismatch at NMOS row", r, "site", s, "(", b.get_transistor_name() ,") and row", r, "site", s+1, "(", next.get_transistor_name() ,") (Nets", b.get_source(), next.get_source(),")")
               success = False
           else:
             if b.get_source() != next.get_drain():
-              print("ERROR: Net mismatch at row", r, "site", s, "and row", r, "site", s+1, "(Nets", b.get_source(), next.get_drain(),")")
+              print("ERROR: Net mismatch at row", r, "site", s, "(", b.get_transistor_name() ,") and row", r, "site", s+1, "(", next.get_transistor_name() ,") (Nets", b.get_source(), next.get_drain(),")")
               success = False
 
     if success:
-      print("Net match PASS")
+      print("Net match... PASS")
+    else:
+      print("Net match... FAIL")
     return success
 
 class SATPlacement(object):
@@ -446,7 +459,7 @@ class SATPlacement(object):
               nmos1_c = self.c_vars_n[r][s][nmos1.name]
               self.constraints += neighbor_constraint(r, s, nmos0, nmos1, nmos0_c, nmos1_c)
     # diffusion break constraint 
-    if self.diffusion_break <= 1:
+    if self.diffusion_break < 1:
       return
     for r in range(self.num_rows):
       for s in range(self.num_sites):
@@ -500,33 +513,45 @@ class SATPlacement(object):
 
   # m is a Z3model
   def parse_smt_result(self):
-    global EMPTY_BLOCK
     result_grid_pmos = []
     result_grid_nmos = []
     for r in range(self.num_rows):
       pmos_row = []
       nmos_row = []
       for s in range(self.num_sites):
+        pmos_placed = False
+        nmos_placed = False
         for pmos in self.pmos:
           c_var_pmos_r_s = self.c_vars_p[r][s][pmos.name]
           if self.evaluate(c_var_pmos_r_s):
-            # TODO
+            if pmos_placed:
+              print('ERR: two PMOSes placed at same location ', r, ' : ', s)
+            print('placing PMOS cell ', pmos.name, ' at location ', r, ' : ', s)
             flip_type = self.parse_flip_type(pmos)
-            block_rs = ResultBlock(pmos.width, flip_type, pmos) # pmos.width = width for placement, not so for splitting.
+            print("PMOS Width: ", pmos.width)
+            block_rs = ResultBlock(pmos.width, flip_type, transistor = pmos) # pmos.width = width for placement, not so for splitting.
             pmos_row.append(block_rs)
-          else:
-            pmos_row.append(EMPTY_BLOCK)
+            pmos_placed = True
+        if not(pmos_placed):
+          print('placing empty pmos cell')
+          pmos_row.append(EMPTY_BLOCK)
         for nmos in self.nmos:
           c_var_nmos_r_s = self.c_vars_n[r][s][nmos.name]
           if self.evaluate(c_var_nmos_r_s):
-            # TODO
+            if nmos_placed:
+              print('ERR: two NMOSes placed at same location ', r, ' : ', s)
+            print('placing NMOS cell ', nmos.name, ' at location ', r, ' : ', s)
             flip_type = self.parse_flip_type(nmos)
-            block_rs = ResultBlock(nmos.width, flip_type, nmos) # nmos.width = width for placement, not so for splitting.
-            pmos_row.append(block_rs)
-          else:
-            nmos_row.append(EMPTY_BLOCK)
+            block_rs = ResultBlock(nmos.width, flip_type, transistor = nmos) # nmos.width = width for placement, not so for splitting.
+            nmos_row.append(block_rs)
+            nmos_placed = True
+        if not(nmos_placed):
+          nmos_row.append(EMPTY_BLOCK)
+          print('placing empty nmos cell')
       result_grid_pmos.append(pmos_row)
       result_grid_nmos.append(nmos_row)
+    print('PMOS grid: ', result_grid_pmos)
+    print('NMOS grid: ', result_grid_nmos)
     return Result(self.num_rows, self.num_sites, result_grid_pmos, result_grid_nmos)
 
 
