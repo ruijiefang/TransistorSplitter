@@ -396,15 +396,7 @@ class SATPlacement(object):
     self.flip_vars = {}
     for mos in self.pmos + self.nmos:
       self.flip_vars[mos.name] = list(map(lambda t: z3.Bool(f'f_{mos.name}_{t}'), self.flip_types))
-    
-    # pb constraint for flip types: exactly one flip type per transistor
-    #TODO: remove this, tautology
-    #for mos in self.pmos + self.nmos:
-    #  pbsum = []
-    #  for f_t in self.flip_vars[mos.name]:
-    #    pbsum.append((f_t, 1)) # weight 1 per term
-    #  self.constraints.append(z3.PbEq(pbsum, 1))
-    
+        
     # constrain which flip types are sharable within each P/N transistor
     # think: there are two flip types for each transistor. This induces 4 cases:
     # a) D-S flip type (0) + D-S flip type (0):
@@ -422,16 +414,17 @@ class SATPlacement(object):
       f_mos1_SD = self.flip_vars[mos1.name][1]
       return [
         # a)
-        (f"DS-DS flip type for {mos0}+{mos1}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_DS, f_mos1_DS), mos0.src == mos1.drain)),
+        (f"DS-DS flip type for {mos0.name}+{mos1.name}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_DS, f_mos1_DS), mos0.src == mos1.drain)),
         # b)
-        (f"DS-SD flip type for {mos0}+{mos1}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_DS, f_mos1_SD), mos0.src == mos1.src)),
+        (f"DS-SD flip type for {mos0.name}+{mos1.name}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_DS, f_mos1_SD), mos0.src == mos1.src)),
         # c)
-        (f"SD-DS flip type for {mos0}+{mos1}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_DS), mos0.drain == mos1.drain)),
+        (f"SD-DS flip type for {mos0.name}+{mos1.name}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_DS), mos0.drain == mos1.drain)),
         # d)
-        (f"SD-SD flip type for {mos0}+{mos1}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_SD), mos0.drain == mos1.src)), 
-        (f"Exactly one flip type for {mos0}", z3.PbEq([(f_mos0_DS, 1), (f_mos0_SD, 1)], 1)),
-        (f"Exactly one flip type for {mos1}", z3.PbEq([(f_mos1_DS, 1), (f_mos1_SD, 1)], 1))
+        (f"SD-SD flip type for {mos0.name}+{mos1.name}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_SD), mos0.drain == mos1.src)), 
+        (f"Exactly one flip type for {mos0.name}", z3.PbEq([(f_mos0_DS, 1), (f_mos0_SD, 1)], 1)),
+        (f"Exactly one flip type for {mos1.name}", z3.PbEq([(f_mos1_DS, 1), (f_mos1_SD, 1)], 1))
       ]
+    print('adding flip type constraints ... ', len(self.constraints), 'total')
     for r in range(self.num_rows):
       for s in range(self.num_sites - 1):
         for pmos0 in self.pmos:
@@ -446,9 +439,12 @@ class SATPlacement(object):
               nmos0_c = self.c_vars_n[r][s][nmos0.name]
               nmos1_c = self.c_vars_n[r][s][nmos1.name]
               self.constraints += neighbor_constraint(r, s, nmos0, nmos1, nmos0_c, nmos1_c)
+    print('done adding flip type constraints..., ', len(self.constraints), ' total')
+    #exit(1)
     # diffusion break constraint 
-    if self.diffusion_break <= 1:
+    if self.diffusion_break < 1:
       return
+    print('adding diffusion break constraint..., ', len(self.constraints))
     for r in range(self.num_rows):
       for s in range(self.num_sites):
         for pmos in self.pmos:
@@ -483,11 +479,13 @@ class SATPlacement(object):
     return (r, s.model())
 
   def evaluate(self, v):
-    return self.z3model.evaluate(v, model_completion = False)
+    return self.z3model.evaluate(v) #, model_completion = False)
 
   def parse_flip_type(self, mos): # TODO
     f0 = self.evaluate(self.flip_vars[mos.name][0])
     f1 = self.evaluate(self.flip_vars[mos.name][1])
+    print('flip type 0 value: ', str(f0))
+    print('flip type 1 value: ', str(f1))
     if f0 and f1:
       print("ERROR: flip types are both true for mos ", str(mos))
       exit(1)
@@ -498,6 +496,9 @@ class SATPlacement(object):
         assert f1
         return "S-D"
     
+  def print_model(self):
+    for key in self.z3model:
+      print('[', key, ' = ', self.z3model[key])
 
   # m is a Z3model
   def parse_smt_result(self):
@@ -531,46 +532,46 @@ class SATPlacement(object):
     return Result(self.num_rows, self.num_sites, result_grid_pmos, result_grid_nmos)
 
 
-
-s = SATPlacement(
-  num_rows = 2,
-  num_sites = 2,
-  pmos_transistors = [
-    Transistor(
-      #NAME   DRAIN    GATE      SRC    BLK    PMOS  W   L NFIN
-      "p_A", "wire0", "gate_0", "wire1", "blk0", True, 3, 3, 1
-    ),
-    Transistor(
-      "p_B", "wire0", "gate_1", "wire1", "blk1", True, 3, 3, 1
-    ),
-    Transistor(
-      "p_C", "wire1", "gate_2", "wire2", "blk2", True, 3, 3, 1
-    ),
-    Transistor(
-      "p_D", "wire2","gate_3", "wire3", "blk3", True, 3, 3, 1
+def test1():
+  s = SATPlacement(
+    num_rows = 2,
+    num_sites = 2,
+    pmos_transistors = [
+      Transistor(
+        #NAME   DRAIN    GATE      SRC    BLK    PMOS  W   L NFIN
+        "p_A", "wire0", "gate_0", "wire1", "blk0", True, 3, 3, 1
+      ),
+      Transistor(
+        "p_B", "wire0", "gate_1", "wire1", "blk1", True, 3, 3, 1
+      ),
+      Transistor(
+        "p_C", "wire1", "gate_2", "wire2", "blk2", True, 3, 3, 1
+      ),
+      Transistor(
+        "p_D", "wire2","gate_3", "wire3", "blk3", True, 3, 3, 1
+      )
+    ],
+    nmos_transistors= [
+      Transistor(
+        "n_A", "wire0", "gate_0", "wire2", "blk0", False, 3,3,1
+      ),
+      Transistor(
+        "n_B", "wire0", "gate_1", "wire1", "blk0", False, 3,3,1
+      )
+    ]
+    # nmos_transistors = [ 
+    # Transistor(
+    #   "n_A", "wire0", "gate_0", "wire2", "blk0", False, 3,3,1
+    # ), Transistor(
+    #   "n_B", "wire1", "gate_1", "wire2", "blk1", False, 3, 3, 1
+    # )
+    #]
+    , diffusion_break = 1 # diffusion break
     )
-  ],
-   nmos_transistors= [
-    Transistor(
-      "n_A", "wire0", "gate_0", "wire2", "blk0", False, 3,3,1
-    ),
-    Transistor(
-      "n_B", "wire0", "gate_1", "wire1", "blk0", False, 3,3,1
-    )
-   ]
-   # nmos_transistors = [ 
-   # Transistor(
-   #   "n_A", "wire0", "gate_0", "wire2", "blk0", False, 3,3,1
-   # ), Transistor(
-   #   "n_B", "wire1", "gate_1", "wire2", "blk1", False, 3, 3, 1
-   # )
-  #]
-  , diffusion_break = 1 # diffusion break
-  )
-s.solve()
-r = s.parse_smt_result()
-c = Checker(r)
-c.check_source_drain_match()
-c.check_diffusion_break()
-c.check_jog()
-c.check_widths_sum_up_to_original_width()
+  s.solve()
+  r = s.parse_smt_result()
+  c = Checker(r)
+  c.check_source_drain_match()
+  c.check_diffusion_break()
+  c.check_jog()
+  c.check_widths_sum_up_to_original_width()

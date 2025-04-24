@@ -9,6 +9,8 @@ from sys import argv
 from collections import defaultdict
 from overrides import overrides
 
+import sat_placer 
+
 class Transistor(object):
   """
     Representation of a transistor
@@ -238,6 +240,12 @@ def parse_transblock(i, lines):
   i += 1
   while True:
     line = lines[i].rstrip().lstrip()
+    if line == "":
+      i += 1
+      continue 
+    if line.startswith("*"):
+      i +=1 
+      continue 
     if line.startswith('.ENDS'):
       print("finish parsing block ", transblock.name, "; ", len(transblock.transistors), ' transistors')
       return (transblock, i)
@@ -254,6 +262,10 @@ def parse_cdl(filename):
   i = 0
   while i < len(lines):
     l = lines[i].rstrip().lstrip()
+    print('line: ', l)
+    if l == "":
+      i = i + 1
+      continue
     if l.startswith(".SUBCKT"):
       transblock, _i = parse_transblock(i, lines)
       transblocks.append(transblock)
@@ -291,6 +303,21 @@ def tryparser():
     for (pmos, nmos) in pairs:
       print("* PAIR: ", pmos.name, " ; ", nmos.name)
   print("********")
+  print('trying to generate a valid placement on grid')
+  for block in blocks:
+    pmos = list(filter(lambda x: x.is_pmos, block.transistors))
+    nmos = list(filter(lambda x: not(x.is_pmos), block.transistors))
+    placer = sat_placer.SATPlacement(1, 30, pmos, nmos, diffusion_break=1)
+    print('placement result: ', placer.solve())
+    placer.print_model()
+    r = placer.parse_smt_result()
+    c = sat_placer.Checker(r)
+    c.check_source_drain_match()
+    c.check_diffusion_break()
+    c.check_jog()
+    c.check_widths_sum_up_to_original_width()
+
+    
 
 if __name__ == "__main__":
   tryparser()

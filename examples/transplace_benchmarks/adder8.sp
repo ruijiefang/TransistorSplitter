@@ -1,6 +1,4 @@
 .SUBCKT adder8 a_7_ a_6_ a_5_ a_4_ a_3_ a_2_ a_1_ a_0_ b_7_ b_6_ b_5_ b_4_ b_3_ b_2_ b_1_ b_0_ y_7_ y_6_ y_5_ y_4_ y_3_ y_2_ y_1_ y_0_
-
-
 * FAxp33_ASAP7_6t_L add_4_U1_0
 MMP0_add_4_U1_0_inst0_MM22 n18 add_4_CI inst0_net081 VDD pmos_lvt w=54.0n l=20n nfin=2
 MMP1_add_4_U1_0_inst0_MM21 inst0_net081 b_0_ inst0_net082 VDD pmos_lvt w=54.0n l=20n nfin=2
@@ -26,7 +24,6 @@ MMN20_add_4_U1_0_inst0_MM10 VSS b_0_ inst0_net36 VSS nmos_lvt w=54.0n l=20n nfin
 MMN21_add_4_U1_0_inst0_MM9 VSS a_0_ inst0_net25 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN22_add_4_U1_0_inst0_MM8 inst0_net36 a_0_ n19 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN23_add_4_U1_0_inst0_MM7 inst0_net25 add_4_CI n19 VSS nmos_lvt w=54.0n l=20n nfin=2
-
 * FAxp33_ASAP7_6t_L add_4_U1_1
 MMP24_add_4_U1_1_inst1_MM22 n20 n16 inst1_net081 VDD pmos_lvt w=54.0n l=20n nfin=2
 MMP25_add_4_U1_1_inst1_MM21 inst1_net081 b_1_ inst1_net082 VDD pmos_lvt w=54.0n l=20n nfin=2
@@ -52,7 +49,6 @@ MMN44_add_4_U1_1_inst1_MM10 VSS b_1_ inst1_net36 VSS nmos_lvt w=54.0n l=20n nfin
 MMN45_add_4_U1_1_inst1_MM9 VSS a_1_ inst1_net25 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN46_add_4_U1_1_inst1_MM8 inst1_net36 a_1_ n21 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN47_add_4_U1_1_inst1_MM7 inst1_net25 n16 n21 VSS nmos_lvt w=54.0n l=20n nfin=2
-
 * FAxp33_ASAP7_6t_L add_4_U1_2
 MMP48_add_4_U1_2_inst2_MM22 n22 n14 inst2_net081 VDD pmos_lvt w=54.0n l=20n nfin=2
 MMP49_add_4_U1_2_inst2_MM21 inst2_net081 b_2_ inst2_net082 VDD pmos_lvt w=54.0n l=20n nfin=2
@@ -78,7 +74,6 @@ MMN68_add_4_U1_2_inst2_MM10 VSS b_2_ inst2_net36 VSS nmos_lvt w=54.0n l=20n nfin
 MMN69_add_4_U1_2_inst2_MM9 VSS a_2_ inst2_net25 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN70_add_4_U1_2_inst2_MM8 inst2_net36 a_2_ n23 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN71_add_4_U1_2_inst2_MM7 inst2_net25 n14 n23 VSS nmos_lvt w=54.0n l=20n nfin=2
-
 * FAxp33_ASAP7_6t_L add_4_U1_3
 MMP72_add_4_U1_3_inst3_MM22 n24 n12 inst3_net081 VDD pmos_lvt w=54.0n l=20n nfin=2
 MMP73_add_4_U1_3_inst3_MM21 inst3_net081 b_3_ inst3_net082 VDD pmos_lvt w=54.0n l=20n nfin=2
@@ -104,7 +99,6 @@ MMN92_add_4_U1_3_inst3_MM10 VSS b_3_ inst3_net36 VSS nmos_lvt w=54.0n l=20n nfin
 MMN93_add_4_U1_3_inst3_MM9 VSS a_3_ inst3_net25 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN94_add_4_U1_3_inst3_MM8 inst3_net36 a_3_ n25 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN95_add_4_U1_3_inst3_MM7 inst3_net25 n12 n25 VSS nmos_lvt w=54.0n l=20n nfin=2
-
 * FAxp33_ASAP7_6t_L add_4_U1_4
 MMP96_add_4_U1_4_inst4_MM22 n26 n10 inst4_net081 VDD pmos_lvt w=54.0n l=20n nfin=2
 MMP97_add_4_U1_4_inst4_MM21 inst4_net081 b_4_ inst4_net082 VDD pmos_lvt w=54.0n l=20n nfin=2
@@ -130,7 +124,6 @@ MMN116_add_4_U1_4_inst4_MM10 VSS b_4_ inst4_net36 VSS nmos_lvt w=54.0n l=20n nfi
 MMN117_add_4_U1_4_inst4_MM9 VSS a_4_ inst4_net25 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN118_add_4_U1_4_inst4_MM8 inst4_net36 a_4_ n27 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN119_add_4_U1_4_inst4_MM7 inst4_net25 n10 n27 VSS nmos_lvt w=54.0n l=20n nfin=2
-
 * FAxp33_ASAP7_6t_L add_4_U1_5
 MMP120_add_4_U1_5_inst5_MM22 n28 n8 inst5_net081 VDD pmos_lvt w=54.0n l=20n nfin=2
 MMP121_add_4_U1_5_inst5_MM21 inst5_net081 b_5_ inst5_net082 VDD pmos_lvt w=54.0n l=20n nfin=2
@@ -156,7 +149,6 @@ MMN140_add_4_U1_5_inst5_MM10 VSS b_5_ inst5_net36 VSS nmos_lvt w=54.0n l=20n nfi
 MMN141_add_4_U1_5_inst5_MM9 VSS a_5_ inst5_net25 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN142_add_4_U1_5_inst5_MM8 inst5_net36 a_5_ n29 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN143_add_4_U1_5_inst5_MM7 inst5_net25 n8 n29 VSS nmos_lvt w=54.0n l=20n nfin=2
-
 * FAxp33_ASAP7_6t_L add_4_U1_6
 MMP144_add_4_U1_6_inst6_MM22 n30 n6 inst6_net081 VDD pmos_lvt w=54.0n l=20n nfin=2
 MMP145_add_4_U1_6_inst6_MM21 inst6_net081 b_6_ inst6_net082 VDD pmos_lvt w=54.0n l=20n nfin=2
@@ -208,69 +200,52 @@ MMN188_add_4_U1_7_inst7_MM10 VSS b_7_ inst7_net36 VSS nmos_lvt w=54.0n l=20n nfi
 MMN189_add_4_U1_7_inst7_MM9 VSS a_7_ inst7_net25 VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN190_add_4_U1_7_inst7_MM8 inst7_net36 a_7_ inst7_CON VSS nmos_lvt w=54.0n l=20n nfin=2
 MMN191_add_4_U1_7_inst7_MM7 inst7_net25 n4 inst7_CON VSS nmos_lvt w=54.0n l=20n nfin=2
-
 * TIELOxp5_ASAP7_6t_L U3
 MMP192_U3_inst8_MM1 inst8_net9 add_4_CI VDD VDD pmos_lvt w=27.0n l=20n nfin=1
 MMN193_U3_inst8_MM2 add_4_CI inst8_net9 VSS VSS nmos_lvt w=27.0n l=20n nfin=1
-
 * INVx1_ASAP7_6t_L U4
 MMN194_U4_inst9_MM0 y_7_ n32 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP195_U4_inst9_MM1 y_7_ n32 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U5
 MMN196_U5_inst10_MM0 n4 n31 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP197_U5_inst10_MM1 n4 n31 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U6
 MMN198_U6_inst11_MM0 y_6_ n30 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP199_U6_inst11_MM1 y_6_ n30 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U7
 MMN200_U7_inst12_MM0 n6 n29 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP201_U7_inst12_MM1 n6 n29 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U8
 MMN202_U8_inst13_MM0 y_5_ n28 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP203_U8_inst13_MM1 y_5_ n28 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U9
 MMN204_U9_inst14_MM0 n8 n27 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP205_U9_inst14_MM1 n8 n27 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U10
 MMN206_U10_inst15_MM0 y_4_ n26 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP207_U10_inst15_MM1 y_4_ n26 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U11
 MMN208_U11_inst16_MM0 n10 n25 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP209_U11_inst16_MM1 n10 n25 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U12
 MMN210_U12_inst17_MM0 y_3_ n24 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP211_U12_inst17_MM1 y_3_ n24 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U13
 MMN212_U13_inst18_MM0 n12 n23 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP213_U13_inst18_MM1 n12 n23 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U14
 MMN214_U14_inst19_MM0 y_2_ n22 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP215_U14_inst19_MM1 y_2_ n22 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U15
 MMN216_U15_inst20_MM0 n14 n21 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP217_U15_inst20_MM1 n14 n21 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U16
 MMN218_U16_inst21_MM0 y_1_ n20 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP219_U16_inst21_MM1 y_1_ n20 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U17
 MMN220_U17_inst22_MM0 n16 n19 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP221_U17_inst22_MM1 n16 n19 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 * INVx1_ASAP7_6t_L U18
 MMN222_U18_inst23_MM0 y_0_ n18 VSS VSS nmos_lvt w=54.0n l=20n nfin=2
 MMP223_U18_inst23_MM1 y_0_ n18 VDD VDD pmos_lvt w=54.0n l=20n nfin=2
-
 .ENDS
