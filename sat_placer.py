@@ -3,7 +3,7 @@
   SAT-driven placement
   https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=10473978 
 """
-from parser import Transistor 
+from parser import Transistor
 
 import z3 
 
@@ -22,10 +22,7 @@ class ResultBlock(object):
   # width of the current transistor block, 
   # 
   def get_width(self):
-    if self.transistor != None:
-      return self.transistor.numfins
-    else:
-      return 0
+    return self.width
 
   def get_transistor_name(self):
     if self.transistor != None:
@@ -86,8 +83,8 @@ class Result(object):
     self.num_sites = num_sites
     self.pmos_grid = pmos_grid
     self.nmos_grid = nmos_grid
-    print('pmos_grid: ', self.pmos_grid)
-    print('nmos_grid: ', self.nmos_grid)
+    #print('pmos_grid: ', self.pmos_grid)
+    #print('nmos_grid: ', self.nmos_grid)
 
   # get cell at (r, s) in pmos grid
   # returns a ResultBlock instance 
@@ -333,7 +330,7 @@ class Checker(object):
               success = False
           else:
             if b.get_source() != next.get_drain():
-              print("ERROR: Net mismatch at row", r, "site", s, "(", b.get_transistor_name() ,") and row", r, "site", s+1, "(", next.get_transistor_name() ,") (Nets", b.get_source(), next.get_drain(),")")
+              print("ERROR: Net mismatch at NMOS row", r, "site", s, "(", b.get_transistor_name() ,") and row", r, "site", s+1, "(", next.get_transistor_name() ,") (Nets", b.get_source(), next.get_drain(),")")
               success = False
 
     if success:
@@ -529,7 +526,7 @@ class SATPlacement(object):
             print('placing PMOS cell ', pmos.name, ' at location ', r, ' : ', s)
             flip_type = self.parse_flip_type(pmos)
             print("PMOS Width: ", pmos.width)
-            block_rs = ResultBlock(pmos.width, flip_type, transistor = pmos) # pmos.width = width for placement, not so for splitting.
+            block_rs = ResultBlock(pmos.numfins, flip_type, transistor = pmos) # pmos.width = width for placement, not so for splitting.
             pmos_row.append(block_rs)
             pmos_placed = True
         if not(pmos_placed):
@@ -542,7 +539,7 @@ class SATPlacement(object):
               print('ERR: two NMOSes placed at same location ', r, ' : ', s)
             print('placing NMOS cell ', nmos.name, ' at location ', r, ' : ', s)
             flip_type = self.parse_flip_type(nmos)
-            block_rs = ResultBlock(nmos.width, flip_type, transistor = nmos) # nmos.width = width for placement, not so for splitting.
+            block_rs = ResultBlock(nmos.numfins, flip_type, transistor = nmos) # nmos.width = width for placement, not so for splitting.
             nmos_row.append(block_rs)
             nmos_placed = True
         if not(nmos_placed):
@@ -555,7 +552,7 @@ class SATPlacement(object):
     return Result(self.num_rows, self.num_sites, result_grid_pmos, result_grid_nmos)
 
 
-
+"""
 s = SATPlacement(
   num_rows = 2,
   num_sites = 2,
@@ -592,3 +589,4 @@ s = SATPlacement(
   , diffusion_break = 1 # diffusion break
   )
 s.solve()
+"""

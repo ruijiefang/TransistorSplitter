@@ -9,14 +9,16 @@ from sys import argv
 from collections import defaultdict
 from overrides import overrides
 
+#import sat_placer
+
 class Transistor(object):
   """
     Representation of a transistor
-    Example: 
+    Example:
       MM13    net067    net063 VSS      VSS     nmos_slvt w=162.00n l=20n   nfin=6
       ^       ^         ^      ^        ^       ^         ^         ^       ^
       name    drain     gate   source   bulk    NMOS      width     length  numfins
-  
+
     drain: output of the transistor
     gate: control-signal connection
     source: usually VDD, connected to a supply voltage for pMOS
@@ -25,13 +27,13 @@ class Transistor(object):
 
   def __init__(self, name, drain, gate, src, blk, is_pmos, width, length, numfins):
     self.is_pmos = is_pmos
-    self.width = width 
-    self.length = length 
+    self.width = width
+    self.length = length
     self.numfins = numfins
-    self.name = name 
+    self.name = name
     self.drain = drain
     self.gate = gate
-    self.src = src 
+    self.src = src
     self.blk = blk
 
   def transistor_type(self):
@@ -51,7 +53,7 @@ class Transistor(object):
 class TransistorBlock(object):
 
   """
-    a TransistorBlock is a collection of transistors with power source, input/output signals    
+    a TransistorBlock is a collection of transistors with power source, input/output signals
       input_signal: commonly referred to as `A`
       output_signal: commonly referred to as `Y`
       vdd_name: name of VDD / power supply
@@ -61,8 +63,8 @@ class TransistorBlock(object):
   def __init__(self, name, externals, transistors=None):
     print('--------- transistors: ', transistors)
     self.transistors = transistors
-    self.name = name 
-    self.externals = externals 
+    self.name = name
+    self.externals = externals
 
   def add_transistor(self, tr):
     if self.transistors == None:
@@ -86,7 +88,7 @@ class PairingPlan(object):
     PairingPlan represents a possible pairing of a (pmos, nmos) list
   """
   def __init__(self, pmos, nmos, pairs={}):
-    self.pmos = pmos 
+    self.pmos = pmos
     self.nmos = nmos
     self.pairs = pairs
     if len(self.pmos) != len(self.nmos):
@@ -101,7 +103,7 @@ class PairingPlan(object):
   def can_pair(self, p, n):
     return self.p.gate == self.n.gate
 
-  # check if self.pairs[-] is idempotent 
+  # check if self.pairs[-] is idempotent
   def is_legal(self):
     for p in self.pairs:
       q = self.pairs[p]
@@ -118,7 +120,7 @@ class PairingPlan(object):
 class PairedTransistorBlock(TransistorBlock):
 
   """
-    a PairedTransistorBlock extends a TransistorBlock, 
+    a PairedTransistorBlock extends a TransistorBlock,
     it represents the paired result of a transistor block
   """
   def __init__(self, transblock, pairingplan):
@@ -161,7 +163,7 @@ class TransistorPairer(object):
 
 
   def pairing(self):
-    pairs = {} 
+    pairs = {}
     pmos_gate = self.pmos_gate
     nmos_gate = self.nmos_gate
     for gate_name in pmos_gate:
@@ -181,10 +183,10 @@ class TransistorPairer(object):
     return result
 
 
-# TODO 
+# TODO
 class RuleChecker(object):
   def __init__(self, transblock):
-    self.transblock = transblock 
+    self.transblock = transblock
 
 
 """
@@ -196,7 +198,7 @@ def msplit(delimiters, string):
     return re.split(regex_pattern, string)
 
 def parse_term(vals, idx, s):
-  try: 
+  try:
     t = float(vals[idx].split(s)[1].split("n")[0])
   except:
     t = float(vals[idx].split(s)[1].split("u")[0])
@@ -234,10 +236,16 @@ def parse_transblock(i, lines):
   externals = vals[2:]
   print('before')
   transblock = TransistorBlock(vals[1], externals)
-  print("transblock: ", transblock.transistors) 
+  print("transblock: ", transblock.transistors)
   i += 1
   while True:
     line = lines[i].rstrip().lstrip()
+    if line == "":
+      i += 1
+      continue
+    if line.startswith("*"):
+      i +=1
+      continue
     if line.startswith('.ENDS'):
       print("finish parsing block ", transblock.name, "; ", len(transblock.transistors), ' transistors')
       return (transblock, i)
@@ -249,11 +257,15 @@ def parse_transblock(i, lines):
 def parse_cdl(filename):
   with open(filename) as fd:
     lines = fd.readlines()
-  
+
   transblocks = []
   i = 0
   while i < len(lines):
     l = lines[i].rstrip().lstrip()
+    print('line: ', l)
+    if l == "":
+      i = i + 1
+      continue
     if l.startswith(".SUBCKT"):
       transblock, _i = parse_transblock(i, lines)
       transblocks.append(transblock)
@@ -291,6 +303,21 @@ def tryparser():
     for (pmos, nmos) in pairs:
       print("* PAIR: ", pmos.name, " ; ", nmos.name)
   print("********")
+  print('trying to generate a valid placement on grid')
+  for block in blocks:
+    pmos = list(filter(lambda x: x.is_pmos, block.transistors))
+    nmos = list(filter(lambda x: not(x.is_pmos), block.transistors))
+    placer = sat_placer.SATPlacement(1, 30, pmos, nmos, diffusion_break=1)
+    print('placement result: ', placer.solve())
+    placer.print_model()
+    r = placer.parse_smt_result()
+    c = sat_placer.Checker(r)
+    c.check_source_drain_match()
+    c.check_diffusion_break()
+    c.check_jog()
+    c.check_widths_sum_up_to_original_width()
+
+
 
 if __name__ == "__main__":
   tryparser()
