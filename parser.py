@@ -293,16 +293,16 @@ def tryparser():
   blocks = parse_cdl(file)
   print(" * CDL parser: parsing done. ")
   print_cdl(blocks)
-  print("******************** trying pairing for each transistor block ***************")
-  for block in blocks:
-    print("*** pairing block ", block.name)
-    pairer = TransistorPairer(block)
-    result = pairer.pairing()
-    print('* >>> pairing success')
-    pairs = result.pmos_nmos_pairs()
-    for (pmos, nmos) in pairs:
-      print("* PAIR: ", pmos.name, " ; ", nmos.name)
-  print("********")
+  # print("******************** trying pairing for each transistor block ***************")
+  # for block in blocks:
+  #  print("*** pairing block ", block.name)
+  #  pairer = TransistorPairer(block)
+  #  result = pairer.pairing()
+  #  print('* >>> pairing success')
+  #  pairs = result.pmos_nmos_pairs()
+  #  for (pmos, nmos) in pairs:
+  #    print("* PAIR: ", pmos.name, " ; ", nmos.name)
+  # print("********")
   print('trying to generate a valid placement on grid')
   for block in blocks:
     pmos = list(filter(lambda x: x.is_pmos, block.transistors))
