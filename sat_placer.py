@@ -6,6 +6,10 @@
 from parser import Transistor 
 
 import z3 
+import pysat.formula as psf
+import pysat.pb as ppb
+
+from time import time 
 
 class ResultBlock(object):
   """
@@ -95,7 +99,15 @@ class Result(object):
 
 class SATPlacement(object):
 
-  def __init__(self, num_rows, num_sites, pmos_transistors, nmos_transistors, diffusion_break):
+  # available modes: [z3pb, z3card, z3vanilla, pysatpb]
+  def __init__(self, num_rows, num_sites, 
+               pmos_transistors, 
+               nmos_transistors, 
+               diffusion_break, mode='z3pb'):
+    self.mode = mode 
+    #z3.set_option("sat.cardinality.encoding", "circuit")
+    z3.set_option('sat.cardinality.solver', True) # alternatively use sat.cardinality.encoding [circuit, sorting, unate]
+    z3.set_option('sat.pb.solver', 'totalizer') # circuit, sorting, totalizer
     self.constraints = []
     self.variables = []
     self.sharable = [[False if x.gate!=y.gate else True for y in nmos_transistors] for x in pmos_transistors]
@@ -123,21 +135,21 @@ class SATPlacement(object):
       self.c_vars_p[r] = {}
       self.c_vars_n[r] = {}
       for s in range(num_sites):
-        loc_pb_pmos = []
-        loc_pb_nmos = []
+        loc_pmos = []
+        loc_nmos = []
         self.c_vars_p[r][s] = {}
         self.c_vars_n[r][s] = {}
         for pmos in self.pmos: 
           pmos_c = z3.Bool(f'c_p_{r}_{s}_{pmos.name}')
           self.c_vars_p[r][s][pmos.name] = pmos_c
-          loc_pb_pmos.append((pmos_c, 1)) # weight 1 per term
+          loc_pmos.append(pmos_c) # weight 1 per term
         for nmos in self.nmos:
           nmos_c = z3.Bool(f'c_n_{r}_{s}_{nmos.name}')
           self.c_vars_n[r][s][nmos.name] = nmos_c
-          loc_pb_nmos.append((nmos_c, 1)) # weight 1 per term
-        print("loc_pb_pmos: ", loc_pb_pmos)
-        self.constraints.append((f"at most one PMOS at ({r}, {s})", z3.PbLe(loc_pb_pmos, 1))) # at most one pmos per (r,s)
-        self.constraints.append((f"at most one NMOS at ({r}, {s})", z3.PbLe(loc_pb_nmos, 1))) # at most one nmos per (r,s)
+          loc_nmos.append(nmos_c) # weight 1 per term
+        
+        self.constraints.append((f"at most one PMOS at ({r}, {s})", self.atmost_one(loc_pmos))) # at most one pmos per (r,s), but can have none
+        self.constraints.append((f"at most one NMOS at ({r}, {s})", self.atmost_one(loc_nmos))) # at most one nmos per (r,s), but can have none
 
         for pmos in self.pmos:
           for nmos in self.nmos:
@@ -150,10 +162,12 @@ class SATPlacement(object):
       for r in range(num_rows):
         for s in range(num_sites):
           if mos.is_pmos:
-            pbsum.append((self.c_vars_p[r][s][mos.name], 1)) # weight 1 per term
+            assert self.c_vars_p[r][s][mos.name] != None
+            pbsum.append(self.c_vars_p[r][s][mos.name]) # weight 1 per term
           else:
-            pbsum.append((self.c_vars_n[r][s][mos.name], 1))
-      self.constraints.append((f"{mos.name} in exactly one place", z3.PbEq(pbsum, 1)))
+            assert self.c_vars_n[r][s][mos.name] != None
+            pbsum.append(self.c_vars_n[r][s][mos.name])
+      self.constraints.append((f"{mos.name} in exactly one place", self.exactly_one(pbsum)))
     # variables f^i_t where t is the flip type, i is a CMOS transistor
     # symmetric for P and N, so we merge them together
     self.flip_vars = {}
@@ -184,8 +198,8 @@ class SATPlacement(object):
         (f"SD-DS flip type for {mos0.name}+{mos1.name}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_DS), mos0.drain == mos1.drain)),
         # d)
         (f"SD-SD flip type for {mos0.name}+{mos1.name}", z3.Implies(z3.And(mos0_c, mos1_c, f_mos0_SD, f_mos1_SD), mos0.drain == mos1.src)), 
-        (f"Exactly one flip type for {mos0.name}", z3.PbEq([(f_mos0_DS, 1), (f_mos0_SD, 1)], 1)),
-        (f"Exactly one flip type for {mos1.name}", z3.PbEq([(f_mos1_DS, 1), (f_mos1_SD, 1)], 1))
+        (f"Exactly one flip type for {mos0.name}", self.exactly_one([f_mos0_DS, f_mos0_SD])),
+        (f"Exactly one flip type for {mos1.name}", self.exactly_one([f_mos1_DS, f_mos1_SD]))
       ]
     print('adding flip type constraints ... ', len(self.constraints), 'total')
     for r in range(self.num_rows):
@@ -226,16 +240,82 @@ class SATPlacement(object):
               c_var = self.c_vars_n[r][s+i][nmos.name]
               conjuncts.append(z3.Not(c_var))
           self.constraints.append((f"diffusion break for {nmos.name} at ({r}, {s})", z3.Implies(z3.Not(c_var_imp), z3.And(conjuncts))))
-          
-        
+
+
+  def new_var_bool(self, var_name):
+    if self.mode.startswith('z3'):
+      return z3.Bool(var_name)
+    elif self.mode.startswith('pysat'):
+      return psf.Atom(var_name)
+    else:
+      print('ERROR: no such mode: ', self.mode)
+      exit(1)
+
+  def exactly_one(self, vars):
+    if self.mode == 'z3pb':
+      weighted = [(v,1) for v in vars]
+      return z3.PbEq(weighted, 1)
+    elif self.mode == 'z3card':
+      return z3.And(self.atmost_one(vars), self.atleast_one(vars))
+    elif self.mode == 'z3vanilla':
+      return z3.And(self.atmost_one(vars), self.atleast_one(vars))
+    elif self.mode == 'pysatpb':
+      print('ERR: unsupported') # TODO 
+      exit(1)
+  
+  def atmost_one(self, vars):
+    if self.mode == 'z3pb':
+      weighted = [(v,1) for v in vars]
+      return z3.PbLe(weighted, 1)
+    elif self.mode == 'z3card':
+      return z3.AtMost(vars, 1)
+    elif self.mode == 'z3vanilla':
+      pairs = []
+      for x in vars:
+        for y in vars:
+          if str(x) != str(y):
+            pairs.append(z3.Not(z3.And(x, y)))
+      return z3.And(pairs)
+    else:
+      print('ERR:unsupported')
+      exit(1)
+  
+  def atleast_one(self, vars):
+    if self.mode == 'z3pb':
+      weighted = [(v, 1) for v in vars]
+      return z3.PbGe(weighted, 1)
+    elif self.mode == 'z3card':
+      return z3.AtMost(vars, 1)
+    elif self.mode == 'z3vanilla':
+      return z3.Or(vars)
+    else:
+      print('ERR:unsupported')
+      exit(1)
+
+  def add_constraint(self, expl, constr):
+    self.constraint.append((expl, constr))
+  
+  def add_constraints(self, expl_constrs):
+    self.constraint += expl_constrs          
+
   def solve(self):
+    #g = z3.Goal()
     s = z3.Solver()
     i = 0
+    start0 = time()
     for x in self.constraints:
       print(' Solver: adding constraint', i, ': ', str(x))
       s.add(x[1])
       i = i + 1
+    end0 = time()
+    print(' ***** constraint formation time: ', end0 - start0, ' s')
+    start1 = time()
+    #t = z3.Then('simplify', 'tseitin-cnf') # card2bv
+    #r = t(g)
+    #s.add(r)
     r = s.check()
+    end1 = time()
+    print(' ***** constraint checking time: ', end1 - start1, ' s')
     if r == z3.sat:
       print(' Solver: RESULT is: ', r)
       print(' get_model output: ', str(s.model()))

@@ -1,6 +1,7 @@
 from sat_placer import SATPlacement 
 from parser import Transistor, print_cdl, absolute, parse_cdl
 from checker import Checker 
+from splitting import SplitTransformer
 
 import argparse 
 
@@ -71,7 +72,7 @@ def test2():
                Transistor('NMOS_B', 'wire5', 'gate1', 'wire6', 'blk0', False, 3, 3, 1)
             ], diffbreak = 1)
 
-def tryplace(file):
+def tryplace(file, solver, rows, sites):
   file = absolute(file)
   print(" * CDL parser: parsing input file ", file)
   blocks = parse_cdl(file)
@@ -91,15 +92,52 @@ def tryplace(file):
   for block in blocks:
     pmos = list(filter(lambda x: x.is_pmos, block.transistors))
     nmos = list(filter(lambda x: not(x.is_pmos), block.transistors))
-    placer = SATPlacement(1, 30, pmos, nmos, diffusion_break=1)
+    placer = SATPlacement(rows, sites, pmos, nmos, diffusion_break=1, mode=solver)
     print('placement result: ', placer.solve())
-    placer.print_model()
+    #placer.print_model()
     r = placer.parse_smt_result()
-    c = Checker(r)
-    c.check_source_drain_match()
-    c.check_diffusion_break()
-    c.check_jog()
-    c.check_widths_sum_up_to_original_width()
+    #c = Checker(r)
+    #c.check_source_drain_match()
+    #c.check_diffusion_break()
+    #c.check_jog()
+    #c.check_widths_sum_up_to_original_width()
+
+
+def count(file):
+  file = absolute(file)
+  print(" * CDL parser: parsing input file ", file)
+  blocks = parse_cdl(file)
+  print(" * CDL parser: parsing done. ")
+  print_cdl(blocks)
+  print('------------------------------')
+  for block in blocks:
+     print('BLOCK ', block.name)
+     print('# PMOS: ', len(list(filter(lambda x: x.is_pmos, block.transistors))))
+     print('# NMOS: ', len(list(filter(lambda x: not x.is_pmos, block.transistors))))
+     print('# total: ', len(block.transistors))
+     print('-----')
+
+
+def trysplit(file, solver, rows, sites):
+  file = absolute(file)
+  print(" * CDL parser: parsing input file ", file)
+  blocks = parse_cdl(file)
+  print(" * CDL parser: parsing done. ")
+  print_cdl(blocks)
+  print('trying to generate a valid placement on grid')
+  for block in blocks:
+    split = SplitTransformer(block)
+    pmos = split.splitted_pmos
+    nmos = split.splitted_nmos
+    placer = SATPlacement(rows, sites, pmos, nmos, diffusion_break=1, mode=solver)
+    print('placement result: ', placer.solve())
+    #placer.print_model()
+    r = placer.parse_smt_result()
+    #c = Checker(r)
+    #c.check_source_drain_match()
+    #c.check_diffusion_break()
+    #c.check_jog()
+    #c.check_widths_sum_up_to_original_width()
 
 
 def trytests(testname):
@@ -114,13 +152,19 @@ if __name__ == "__main__":
   argp.add_argument('--place', type=str, required=False)
   argp.add_argument('--test', type=str, required=False)
   argp.add_argument('--split', type=str, required=False)
+  argp.add_argument('--solver', type=str, required=False)
+  argp.add_argument('--rows', type=int, required=False)
+  argp.add_argument('--sites', type=int, required=False)
+  argp.add_argument('--count', type=str, required=False)
   args = argp.parse_args()
   if args.place != None:
-    tryplace(args.place)
+    tryplace(args.place, args.solver, args.rows, args.sites)
   elif args.test != None:
     trytests(args.test)
   elif args.split != None:
-    print('splitting TODO --- file from ', args.split)
+    trysplit(args.split, args.solver, args.rows, args.sites)
+  elif args.count != None:
+     count(args.count)
   else:
-    print('usage: [--place|--test|--split] <name to test or CDL file>') 
+    print('usage: [--place|--test|--split] <name to test or CDL file> --solver <z3pb|z3card|z3vanilla> --rows <r> --sites <s>') 
 
