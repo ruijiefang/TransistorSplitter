@@ -194,13 +194,13 @@ class SATPlacement(object):
           for pmos1 in self.pmos:
             if pmos0.name != pmos1.name:
               pmos0_c = self.c_vars_p[r][s][pmos0.name]
-              pmos1_c = self.c_vars_p[r][s][pmos1.name]
+              pmos1_c = self.c_vars_p[r][s+1][pmos1.name]
               self.constraints += neighbor_constraint(r, s, pmos0, pmos1, pmos0_c, pmos1_c)
         for nmos0 in self.nmos:
           for nmos1 in self.nmos:
             if nmos0.name != nmos1.name:
               nmos0_c = self.c_vars_n[r][s][nmos0.name]
-              nmos1_c = self.c_vars_n[r][s][nmos1.name]
+              nmos1_c = self.c_vars_n[r][s+1][nmos1.name]
               self.constraints += neighbor_constraint(r, s, nmos0, nmos1, nmos0_c, nmos1_c)
     print('done adding flip type constraints..., ', len(self.constraints), ' total')
     #exit(1)
@@ -236,10 +236,15 @@ class SATPlacement(object):
       s.add(x[1])
       i = i + 1
     r = s.check()
-    print(' Solver: RESULT is: ', r)
-    print(' get_model output: ', str(s.model()))
-    self.z3model = s.model()
-    return (r, s.model())
+    if r == z3.sat:
+      print(' Solver: RESULT is: ', r)
+      print(' get_model output: ', str(s.model()))
+      self.z3model = s.model()
+      return (r, s.model())
+    else:
+      print(' Solver error: RESULT is ', r)
+      self.z3model = None 
+      return (r, None)
 
   def evaluate(self, v):
     return self.z3model.evaluate(v) #, model_completion = False)
@@ -263,35 +268,71 @@ class SATPlacement(object):
     for key in self.z3model:
       print('[', key, ' = ', self.z3model[key])
 
-  # m is a Z3model
+  def print_result_grid(self):
+    print('--------------- PMOS GRID -----------------------')
+    for r in range(self.num_rows):
+      for s in range(self.num_sites):
+        isempty = True 
+        for pmos in self.pmos:
+          if self.evaluate(self.c_vars_p[r][s][pmos.name]):
+            print(pmos.name, end='\t')
+            isempty = False 
+            break
+        if isempty:
+          print('*', end='\t')
+      print('')
+    print('--------------- NMOS GRID -----------------------')
+    for r in range(self.num_rows):
+      for s in range(self.num_sites):
+        isempty = True
+        for nmos in self.nmos:
+          if self.evaluate(self.c_vars_n[r][s][nmos.name]):
+            print(nmos.name, end='\t')
+            isempty = False
+            break
+        if isempty:
+          print('*', end='\t')
+      print('')
+
   def parse_smt_result(self):
-    global EMPTY_BLOCK
     result_grid_pmos = []
     result_grid_nmos = []
     for r in range(self.num_rows):
       pmos_row = []
       nmos_row = []
       for s in range(self.num_sites):
+        pmos_placed = False
+        nmos_placed = False
         for pmos in self.pmos:
           c_var_pmos_r_s = self.c_vars_p[r][s][pmos.name]
           if self.evaluate(c_var_pmos_r_s):
-            # TODO
+            if pmos_placed:
+              print('ERR: two PMOSes placed at same location ', r, ' : ', s)
+            print('placing PMOS cell ', pmos.name, ' at location ', r, ' : ', s)
             flip_type = self.parse_flip_type(pmos)
-            block_rs = ResultBlock(pmos.width, flip_type, pmos) # pmos.width = width for placement, not so for splitting.
+            print("PMOS Width: ", pmos.width)
+            block_rs = ResultBlock(pmos.numfins, flip_type, transistor = pmos) # pmos.width = width for placement, not so for splitting.
             pmos_row.append(block_rs)
-          else:
-            pmos_row.append(EMPTY_BLOCK)
+            pmos_placed = True
+        if not(pmos_placed):
+          print('placing empty pmos cell')
+          pmos_row.append(EMPTY_BLOCK)
         for nmos in self.nmos:
           c_var_nmos_r_s = self.c_vars_n[r][s][nmos.name]
           if self.evaluate(c_var_nmos_r_s):
-            # TODO
+            if nmos_placed:
+              print('ERR: two NMOSes placed at same location ', r, ' : ', s)
+            print('placing NMOS cell ', nmos.name, ' at location ', r, ' : ', s)
             flip_type = self.parse_flip_type(nmos)
-            block_rs = ResultBlock(nmos.width, flip_type, nmos) # nmos.width = width for placement, not so for splitting.
-            pmos_row.append(block_rs)
-          else:
-            nmos_row.append(EMPTY_BLOCK)
+            block_rs = ResultBlock(nmos.numfins, flip_type, transistor = nmos) # nmos.width = width for placement, not so for splitting.
+            nmos_row.append(block_rs)
+            nmos_placed = True
+        if not(nmos_placed):
+          nmos_row.append(EMPTY_BLOCK)
+          print('placing empty nmos cell')
       result_grid_pmos.append(pmos_row)
       result_grid_nmos.append(nmos_row)
+    print('PMOS grid: ', result_grid_pmos)
+    print('NMOS grid: ', result_grid_nmos)
     return Result(self.num_rows, self.num_sites, result_grid_pmos, result_grid_nmos)
-
 

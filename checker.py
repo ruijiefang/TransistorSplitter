@@ -147,7 +147,7 @@ class Checker(object):
             all_sub_transistors.append(pmos_block)
       # check if all blocks sum up to given width
       width = sum(list(map(lambda x: x.get_width(), all_sub_transistors)))
-      if width != pmos_names[name].numfins:
+      if width != pmos_names[name].width:
         print("ERROR: Transistor", name, "incorrectly split into", len(all_sub_transistors), "blocks of width", width, "but original width is", pmos_names[name].numfins)
         success = False
 
@@ -160,7 +160,7 @@ class Checker(object):
             all_sub_transistors.append(nmos_block)
       # check if all blocks sum up to given width
       width = sum(list(map(lambda x: x.get_width(), all_sub_transistors)))
-      if width != nmos_names[name].numfins:
+      if width != nmos_names[name].width:
         print("ERROR: Transistor", name, "incorrectly split into", len(all_sub_transistors), "blocks of width", width, "but original width is", nmos_names[name].numfins)
         success = False
 
@@ -172,16 +172,21 @@ class Checker(object):
 
   def check_source_drain_match(self):
     success = True
+    print('checking source-drain match...')
     # PMOS
     for r in range(self.result.num_rows):
       for s in range(self.result.num_sites - 1):
         b = self.result.pmos_cell_at(r, s)
         if b.is_empty():
-          break
-
+          print(f' -- ({r}, {s}) is empty, skipping')
+          continue
+        
         next = self.result.pmos_cell_at(r, s+1)
         if next.is_empty():
-          break
+          print(f' -- ({r}, {s+1}) is empty, skipping')
+          continue
+
+        print('SD-match: checking pair ', b.transistor.name, ' + ', next.transistor.name)
 
         if b.get_flip_type() == "S-D":
           if next.get_flip_type() == "S-D":
@@ -207,11 +212,11 @@ class Checker(object):
       for s in range(self.result.num_sites - 1):
         b = self.result.nmos_cell_at(r, s)
         if b.is_empty():
-          break
+          continue
 
         next = self.result.nmos_cell_at(r, s+1)
         if next.is_empty():
-          break
+          continue
 
         if b.get_flip_type() == "S-D":
           if next.get_flip_type() == "S-D":
